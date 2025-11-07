@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 class Income extends Equatable {
   final String id;
   final DateTime date;
+  final String context; // 'hotel' or 'house'
   final double onlineIncome;
   final double offlineIncome;
   final int mealsCount;
@@ -12,6 +13,7 @@ class Income extends Equatable {
   const Income({
     required this.id,
     required this.date,
+    required this.context,
     required this.onlineIncome,
     required this.offlineIncome,
     this.mealsCount = 0,
@@ -25,6 +27,7 @@ class Income extends Equatable {
     return Income(
       id: json['id'] as String,
       date: DateTime.parse(json['date'] as String),
+      context: json['context'] as String? ?? 'hotel',
       onlineIncome: _parseDouble(json['online_income']),
       offlineIncome: _parseDouble(json['offline_income']),
       mealsCount: _parseInt(json['meals_count']),
@@ -41,6 +44,7 @@ class Income extends Equatable {
     return {
       'id': id,
       'date': date.toIso8601String(),
+      'context': context,
       'online_income': onlineIncome,
       'offline_income': offlineIncome,
       'meals_count': mealsCount,
@@ -50,6 +54,7 @@ class Income extends Equatable {
   Map<String, dynamic> toInsertJson() {
     return {
       'date': date.toIso8601String(),
+      'context': context,
       'online_income': onlineIncome,
       'offline_income': offlineIncome,
       'meals_count': mealsCount,
@@ -75,6 +80,7 @@ class Income extends Equatable {
   Income copyWith({
     String? id,
     DateTime? date,
+    String? context,
     double? onlineIncome,
     double? offlineIncome,
     int? mealsCount,
@@ -84,6 +90,7 @@ class Income extends Equatable {
     return Income(
       id: id ?? this.id,
       date: date ?? this.date,
+      context: context ?? this.context,
       onlineIncome: onlineIncome ?? this.onlineIncome,
       offlineIncome: offlineIncome ?? this.offlineIncome,
       mealsCount: mealsCount ?? this.mealsCount,
@@ -96,6 +103,7 @@ class Income extends Equatable {
   List<Object?> get props => [
         id,
         date,
+        context,
         onlineIncome,
         offlineIncome,
         mealsCount,

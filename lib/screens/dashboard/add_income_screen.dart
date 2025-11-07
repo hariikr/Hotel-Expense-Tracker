@@ -6,6 +6,7 @@ import '../../blocs/income/income_event.dart';
 import '../../blocs/income/income_state.dart';
 import '../../blocs/dashboard/dashboard_bloc.dart';
 import '../../blocs/dashboard/dashboard_event.dart';
+import '../../blocs/dashboard/dashboard_state.dart';
 import '../../models/income.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/formatters.dart';
@@ -72,6 +73,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
 
   void _saveIncome() {
     if (_formKey.currentState!.validate()) {
+      final dashboardState = context.read<DashboardBloc>().state;
+      final contextType = dashboardState is DashboardLoaded ? dashboardState.selectedContext : 'hotel';
+
       final onlineIncome = double.tryParse(_onlineIncomeController.text) ?? 0.0;
       final offlineIncome =
           double.tryParse(_offlineIncomeController.text) ?? 0.0;
@@ -80,6 +84,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
       final income = Income(
         id: widget.existingIncome?.id ?? const Uuid().v4(),
         date: Formatters.normalizeDate(_selectedDate),
+        context: contextType,
         onlineIncome: onlineIncome,
         offlineIncome: offlineIncome,
         mealsCount: mealsCount,

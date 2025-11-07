@@ -14,14 +14,19 @@ class SupabaseService {
   // ==================== Income Operations ====================
 
   /// Fetch all income records
-  Future<List<Income>> fetchAllIncome() async {
+  Future<List<Income>> fetchAllIncome({String? context}) async {
     try {
-      final response =
-          await _client.from('income').select().order('date', ascending: false);
+      final response = await _client.from('income').select().order('date', ascending: false);
 
-      return (response as List)
+      final incomes = (response as List)
           .map((json) => Income.fromJson(json as Map<String, dynamic>))
           .toList();
+
+      if (context != null) {
+        return incomes.where((income) => income.context == context).toList();
+      }
+
+      return incomes;
     } catch (e) {
       throw Exception('Failed to fetch income: $e');
     }
@@ -45,7 +50,7 @@ class SupabaseService {
 
   /// Fetch income for a date range
   Future<List<Income>> fetchIncomeByDateRange(
-      DateTime startDate, DateTime endDate) async {
+      DateTime startDate, DateTime endDate, {String? context}) async {
     try {
       final response = await _client
           .from('income')
@@ -54,9 +59,15 @@ class SupabaseService {
           .lte('date', endDate.toIso8601String())
           .order('date', ascending: false);
 
-      return (response as List)
+      final incomes = (response as List)
           .map((json) => Income.fromJson(json as Map<String, dynamic>))
           .toList();
+
+      if (context != null) {
+        return incomes.where((income) => income.context == context).toList();
+      }
+
+      return incomes;
     } catch (e) {
       throw Exception('Failed to fetch income by date range: $e');
     }
@@ -89,16 +100,19 @@ class SupabaseService {
   // ==================== Expense Operations ====================
 
   /// Fetch all expense records
-  Future<List<Expense>> fetchAllExpense() async {
+  Future<List<Expense>> fetchAllExpense({String? context}) async {
     try {
-      final response = await _client
-          .from('expense')
-          .select()
-          .order('date', ascending: false);
+      final response = await _client.from('expense').select().order('date', ascending: false);
 
-      return (response as List)
+      final expenses = (response as List)
           .map((json) => Expense.fromJson(json as Map<String, dynamic>))
           .toList();
+
+      if (context != null) {
+        return expenses.where((expense) => expense.context == context).toList();
+      }
+
+      return expenses;
     } catch (e) {
       throw Exception('Failed to fetch expense: $e');
     }
@@ -122,7 +136,7 @@ class SupabaseService {
 
   /// Fetch expense for a date range
   Future<List<Expense>> fetchExpenseByDateRange(
-      DateTime startDate, DateTime endDate) async {
+      DateTime startDate, DateTime endDate, {String? context}) async {
     try {
       final response = await _client
           .from('expense')
@@ -131,9 +145,15 @@ class SupabaseService {
           .lte('date', endDate.toIso8601String())
           .order('date', ascending: false);
 
-      return (response as List)
+      final expenses = (response as List)
           .map((json) => Expense.fromJson(json as Map<String, dynamic>))
           .toList();
+
+      if (context != null) {
+        return expenses.where((expense) => expense.context == context).toList();
+      }
+
+      return expenses;
     } catch (e) {
       throw Exception('Failed to fetch expense by date range: $e');
     }
@@ -166,16 +186,50 @@ class SupabaseService {
   // ==================== Daily Summary Operations ====================
 
   /// Fetch all daily summaries
-  Future<List<DailySummary>> fetchAllDailySummaries() async {
+  Future<List<DailySummary>> fetchAllDailySummaries({String? context}) async {
     try {
-      final response = await _client
-          .from('daily_summary')
-          .select()
-          .order('date', ascending: false);
+      // Fetch filtered expenses and incomes
+      final expenses = await fetchAllExpense(context: context);
+      final incomes = await fetchAllIncome(context: context);
 
-      return (response as List)
-          .map((json) => DailySummary.fromJson(json as Map<String, dynamic>))
-          .toList();
+      // Group by date
+      final Map<DateTime, List<Expense>> expensesByDate = {};
+      final Map<DateTime, List<Income>> incomesByDate = {};
+
+      for (var expense in expenses) {
+        final date = DateTime(expense.date.year, expense.date.month, expense.date.day);
+        expensesByDate.putIfAbsent(date, () => []).add(expense);
+      }
+
+      for (var income in incomes) {
+        final date = DateTime(income.date.year, income.date.month, income.date.day);
+        incomesByDate.putIfAbsent(date, () => []).add(income);
+      }
+
+      // Calculate summaries
+      final Set<DateTime> allDates = {...expensesByDate.keys, ...incomesByDate.keys};
+      final List<DailySummary> summaries = [];
+
+      for (var date in allDates) {
+        final dayExpenses = expensesByDate[date] ?? [];
+        final dayIncomes = incomesByDate[date] ?? [];
+
+        double totalExpense = dayExpenses.fold(0.0, (sum, e) => sum + e.totalExpense);
+        double totalIncome = dayIncomes.fold(0.0, (sum, i) => sum + i.totalIncome);
+        int mealsCount = dayIncomes.fold(0, (sum, i) => sum + i.mealsCount);
+
+        summaries.add(DailySummary(
+          id: '${context ?? 'all'}_${date.toIso8601String()}',
+          date: date,
+          totalIncome: totalIncome,
+          totalExpense: totalExpense,
+          profit: totalIncome - totalExpense,
+          mealsCount: mealsCount,
+        ));
+      }
+
+      summaries.sort((a, b) => b.date.compareTo(a.date)); // Most recent first
+      return summaries;
     } catch (e) {
       throw Exception('Failed to fetch daily summaries: $e');
     }
@@ -199,18 +253,50 @@ class SupabaseService {
 
   /// Fetch daily summaries for a date range
   Future<List<DailySummary>> fetchDailySummariesByDateRange(
-      DateTime startDate, DateTime endDate) async {
+      DateTime startDate, DateTime endDate, {String? context}) async {
     try {
-      final response = await _client
-          .from('daily_summary')
-          .select()
-          .gte('date', startDate.toIso8601String())
-          .lte('date', endDate.toIso8601String())
-          .order('date', ascending: false);
+      // Fetch filtered expenses and incomes for the date range
+      final expenses = await fetchExpenseByDateRange(startDate, endDate, context: context);
+      final incomes = await fetchIncomeByDateRange(startDate, endDate, context: context);
 
-      return (response as List)
-          .map((json) => DailySummary.fromJson(json as Map<String, dynamic>))
-          .toList();
+      // Group by date
+      final Map<DateTime, List<Expense>> expensesByDate = {};
+      final Map<DateTime, List<Income>> incomesByDate = {};
+
+      for (var expense in expenses) {
+        final date = DateTime(expense.date.year, expense.date.month, expense.date.day);
+        expensesByDate.putIfAbsent(date, () => []).add(expense);
+      }
+
+      for (var income in incomes) {
+        final date = DateTime(income.date.year, income.date.month, income.date.day);
+        incomesByDate.putIfAbsent(date, () => []).add(income);
+      }
+
+      // Calculate summaries
+      final Set<DateTime> allDates = {...expensesByDate.keys, ...incomesByDate.keys};
+      final List<DailySummary> summaries = [];
+
+      for (var date in allDates) {
+        final dayExpenses = expensesByDate[date] ?? [];
+        final dayIncomes = incomesByDate[date] ?? [];
+
+        double totalExpense = dayExpenses.fold(0.0, (sum, e) => sum + e.totalExpense);
+        double totalIncome = dayIncomes.fold(0.0, (sum, i) => sum + i.totalIncome);
+        int mealsCount = dayIncomes.fold(0, (sum, i) => sum + i.mealsCount);
+
+        summaries.add(DailySummary(
+          id: '${context ?? 'all'}_${date.toIso8601String()}',
+          date: date,
+          totalIncome: totalIncome,
+          totalExpense: totalExpense,
+          profit: totalIncome - totalExpense,
+          mealsCount: mealsCount,
+        ));
+      }
+
+      summaries.sort((a, b) => b.date.compareTo(a.date)); // Most recent first
+      return summaries;
     } catch (e) {
       throw Exception('Failed to fetch daily summaries by date range: $e');
     }
@@ -243,9 +329,9 @@ class SupabaseService {
   }
 
   /// Calculate weekly summary
-  Future<Map<String, double>> fetchWeeklySummary(DateTime weekStart) async {
+  Future<Map<String, double>> fetchWeeklySummary(DateTime weekStart, {String? context}) async {
     final weekEnd = weekStart.add(const Duration(days: 7));
-    final summaries = await fetchDailySummariesByDateRange(weekStart, weekEnd);
+    final summaries = await fetchDailySummariesByDateRange(weekStart, weekEnd, context: context);
 
     double totalIncome = 0;
     double totalExpense = 0;
@@ -265,11 +351,11 @@ class SupabaseService {
   }
 
   /// Calculate monthly summary
-  Future<Map<String, double>> fetchMonthlySummary(int year, int month) async {
+  Future<Map<String, double>> fetchMonthlySummary(int year, int month, {String? context}) async {
     final monthStart = DateTime(year, month, 1);
     final monthEnd = DateTime(year, month + 1, 0);
     final summaries =
-        await fetchDailySummariesByDateRange(monthStart, monthEnd);
+        await fetchDailySummariesByDateRange(monthStart, monthEnd, context: context);
 
     double totalIncome = 0;
     double totalExpense = 0;

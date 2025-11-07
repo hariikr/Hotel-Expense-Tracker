@@ -6,6 +6,7 @@ import '../../blocs/expense/expense_event.dart';
 import '../../blocs/expense/expense_state.dart';
 import '../../blocs/dashboard/dashboard_bloc.dart';
 import '../../blocs/dashboard/dashboard_event.dart';
+import '../../blocs/dashboard/dashboard_state.dart';
 import '../../models/expense.dart';
 import '../../services/local_storage_service.dart';
 import '../../utils/app_theme.dart';
@@ -28,7 +29,7 @@ class AddExpenseScreen extends StatefulWidget {
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final Map<String, TextEditingController> _controllers = {};
+  final _expenseTextController = TextEditingController();
   final LocalStorageService _storageService = LocalStorageService();
   late DateTime _selectedDate;
   bool _isLoading = false;
@@ -36,82 +37,61 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   bool _isDraftLoaded = false;
   bool _isAutoSaving = false;
 
-  final List<Map<String, dynamic>> _expenseFields = [
-    {'key': 'fish', 'label': 'Fish', 'icon': Icons.set_meal},
-    {'key': 'meat', 'label': 'Meat', 'icon': Icons.restaurant},
-    {'key': 'chicken', 'label': 'Chicken', 'icon': Icons.lunch_dining},
-    {'key': 'milk', 'label': 'Milk', 'icon': Icons.local_drink},
-    {'key': 'parotta', 'label': 'Parotta', 'icon': Icons.breakfast_dining},
-    {'key': 'pathiri', 'label': 'pathiri', 'icon': Icons.emoji_food_beverage},
-    {'key': 'dosa', 'label': 'Dosa', 'icon': Icons.rice_bowl},
-    {'key': 'appam', 'label': 'Appam', 'icon': Icons.flatware},
-    {'key': 'coconut', 'label': 'Coconut', 'icon': Icons.grain},
-    {'key': 'vegetables', 'label': 'Vegetables', 'icon': Icons.local_florist},
-    {'key': 'rice', 'label': 'Rice', 'icon': Icons.rice_bowl},
-    {'key': 'laborManisha', 'label': 'Labor - Manisha', 'icon': Icons.person},
-    {
-      'key': 'laborMidhun',
-      'label': 'Labor - Midhun',
-      'icon': Icons.person_outline
-    },
-    {'key': 'others', 'label': 'Others', 'icon': Icons.more_horiz},
-  ];
-
   @override
   void initState() {
     super.initState();
     _selectedDate = widget.selectedDate ?? DateTime.now();
 
-    // Initialize controllers
-    for (var field in _expenseFields) {
-      _controllers[field['key']] = TextEditingController();
-    }
-
-    // Load existing expense data if available
     if (widget.existingExpense != null) {
+      // Load existing expense data
       _loadExistingExpense();
     } else {
-      // Try to load draft from local storage
+      // Load draft if available
       _loadDraft();
     }
-
-    // Clean up old drafts
-    _storageService.clearOldDrafts();
   }
 
-  Future<void> _loadExistingExpense() async {
-    final expense = widget.existingExpense!;
-    setState(() {
-      _selectedDate = expense.date;
-      _controllers['fish']!.text =
-          expense.fish > 0 ? expense.fish.toString() : '';
-      _controllers['meat']!.text =
-          expense.meat > 0 ? expense.meat.toString() : '';
-      _controllers['chicken']!.text =
-          expense.chicken > 0 ? expense.chicken.toString() : '';
-      _controllers['milk']!.text =
-          expense.milk > 0 ? expense.milk.toString() : '';
-      _controllers['parotta']!.text =
-          expense.parotta > 0 ? expense.parotta.toString() : '';
-      _controllers['pathiri']!.text =
-          expense.pathiri > 0 ? expense.pathiri.toString() : '';
-      _controllers['dosa']!.text =
-          expense.dosa > 0 ? expense.dosa.toString() : '';
-      _controllers['appam']!.text =
-          expense.appam > 0 ? expense.appam.toString() : '';
-      _controllers['coconut']!.text =
-          expense.coconut > 0 ? expense.coconut.toString() : '';
-      _controllers['vegetables']!.text =
-          expense.vegetables > 0 ? expense.vegetables.toString() : '';
-      _controllers['rice']!.text =
-          expense.rice > 0 ? expense.rice.toString() : '';
-      _controllers['laborManisha']!.text =
-          expense.laborManisha > 0 ? expense.laborManisha.toString() : '';
-      _controllers['laborMidhun']!.text =
-          expense.laborMidhun > 0 ? expense.laborMidhun.toString() : '';
-      _controllers['others']!.text =
-          expense.others > 0 ? expense.others.toString() : '';
-    });
+  String _expenseToText(Expense expense) {
+    final lines = <String>[];
+    if (expense.fish > 0) lines.add('fish ${expense.fish}rs');
+    if (expense.meat > 0) lines.add('meat ${expense.meat}rs');
+    if (expense.chicken > 0) lines.add('chicken ${expense.chicken}rs');
+    if (expense.milk > 0) lines.add('milk ${expense.milk}rs');
+    if (expense.parotta > 0) lines.add('parotta ${expense.parotta}rs');
+    if (expense.pathiri > 0) lines.add('pathiri ${expense.pathiri}rs');
+    if (expense.dosa > 0) lines.add('dosa ${expense.dosa}rs');
+    if (expense.appam > 0) lines.add('appam ${expense.appam}rs');
+    if (expense.coconut > 0) lines.add('coconut ${expense.coconut}rs');
+    if (expense.vegetables > 0) lines.add('vegetables ${expense.vegetables}rs');
+    if (expense.rice > 0) lines.add('rice ${expense.rice}rs');
+    if (expense.laborManisha > 0) lines.add('labor manisha ${expense.laborManisha}rs');
+    if (expense.laborMidhun > 0) lines.add('labor midhun ${expense.laborMidhun}rs');
+    if (expense.others > 0) lines.add('others ${expense.others}rs');
+    return lines.join('\n');
+  }
+
+  Map<String, double> _parseExpenseText(String text) {
+    final Map<String, double> expenses = {};
+    final lines = text.split('\n');
+    for (var line in lines) {
+      line = line.trim();
+      if (line.isEmpty) continue;
+      // Find the last number in the line
+      final numberRegex = RegExp(r'(-?\d+(?:\.\d+)?)');
+      final matches = numberRegex.allMatches(line);
+      if (matches.isNotEmpty) {
+        final lastMatch = matches.last;
+        final amount = double.tryParse(lastMatch.group(0)!) ?? 0.0;
+        final category = line.substring(0, lastMatch.start).trim().toLowerCase();
+        expenses[category] = (expenses[category] ?? 0.0) + amount;
+      }
+    }
+    return expenses;
+  }
+
+  double _calculateTotal() {
+    final parsed = _parseExpenseText(_expenseTextController.text);
+    return parsed.values.fold(0.0, (sum, value) => sum + value);
   }
 
   Future<void> _loadDraft() async {
@@ -121,25 +101,22 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       if (draft != null && draft.isNotEmpty) {
         setState(() {
           _isDraftLoaded = true;
-          draft.forEach((key, value) {
-            if (_controllers.containsKey(key) && value.isNotEmpty) {
-              _controllers[key]!.text = value;
-            }
-          });
+          if (draft.containsKey('text')) {
+            _expenseTextController.text = draft['text']!;
+          }
         });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
+            const SnackBar(
+              content: Row(
                 children: [
                   Icon(Icons.restore, color: Colors.white, size: 20),
                   SizedBox(width: 8),
-                  Text('Draft data restored'),
+                  Text('Draft loaded'),
                 ],
               ),
-              backgroundColor: AppTheme.primaryColor,
-              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.blue,
             ),
           );
         }
@@ -156,11 +133,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       setState(() => _isAutoSaving = true);
 
       final draftData = <String, String>{};
-      _controllers.forEach((key, controller) {
-        if (controller.text.isNotEmpty) {
-          draftData[key] = controller.text;
-        }
-      });
+      if (_expenseTextController.text.trim().isNotEmpty) {
+        draftData['text'] = _expenseTextController.text;
+      }
 
       if (draftData.isNotEmpty) {
         await _storageService.saveExpenseDraft(_selectedDate, draftData);
@@ -169,6 +144,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       if (mounted) {
         setState(() => _isAutoSaving = false);
       }
+    });
+  }
+
+  Future<void> _loadExistingExpense() async {
+    final expense = widget.existingExpense!;
+    setState(() {
+      _selectedDate = expense.date;
+      _expenseTextController.text = _expenseToText(expense);
     });
   }
 
@@ -187,145 +170,56 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       if (state is ExpenseLoaded && state.selectedExpense != null) {
         final expense = state.selectedExpense!;
         setState(() {
-          _controllers['fish']!.text =
-              expense.fish > 0 ? expense.fish.toString() : '';
-          _controllers['meat']!.text =
-              expense.meat > 0 ? expense.meat.toString() : '';
-          _controllers['chicken']!.text =
-              expense.chicken > 0 ? expense.chicken.toString() : '';
-          _controllers['milk']!.text =
-              expense.milk > 0 ? expense.milk.toString() : '';
-          _controllers['parotta']!.text =
-              expense.parotta > 0 ? expense.parotta.toString() : '';
-          _controllers['pathiri']!.text =
-              expense.pathiri > 0 ? expense.pathiri.toString() : '';
-          _controllers['dosa']!.text =
-              expense.dosa > 0 ? expense.dosa.toString() : '';
-          _controllers['appam']!.text =
-              expense.appam > 0 ? expense.appam.toString() : '';
-          _controllers['coconut']!.text =
-              expense.coconut > 0 ? expense.coconut.toString() : '';
-          _controllers['vegetables']!.text =
-              expense.vegetables > 0 ? expense.vegetables.toString() : '';
-          _controllers['rice']!.text =
-              expense.rice > 0 ? expense.rice.toString() : '';
-          _controllers['laborManisha']!.text =
-              expense.laborManisha > 0 ? expense.laborManisha.toString() : '';
-          _controllers['laborMidhun']!.text =
-              expense.laborMidhun > 0 ? expense.laborMidhun.toString() : '';
-          _controllers['others']!.text =
-              expense.others > 0 ? expense.others.toString() : '';
+          _expenseTextController.text = _expenseToText(expense);
         });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Copied from previous day'),
-              backgroundColor: AppTheme.primaryColor,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No expense data found for previous day'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading previous day: $e'),
-            backgroundColor: AppTheme.lossColor,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
+      // Handle error
     }
   }
 
   void _applyTemplate(String templateName) {
     setState(() {
-      // Clear all fields first
-      _controllers.forEach((key, controller) => controller.clear());
-
       // Apply template values based on template type
       switch (templateName) {
         case 'weekend':
-          _controllers['fish']!.text = '500';
-          _controllers['meat']!.text = '400';
-          _controllers['chicken']!.text = '350';
-          _controllers['vegetables']!.text = '200';
-          _controllers['rice']!.text = '150';
-          _controllers['parotta']!.text = '300';
-          _controllers['laborManisha']!.text = '200';
-          _controllers['laborMidhun']!.text = '200';
+          _expenseTextController.text = '''fish 500rs
+meat 400rs
+chicken 350rs
+vegetables 200rs
+rice 150rs
+parotta 300rs
+labor manisha 200rs
+labor midhun 200rs''';
           break;
         case 'weekday':
-          _controllers['fish']!.text = '300';
-          _controllers['meat']!.text = '250';
-          _controllers['chicken']!.text = '200';
-          _controllers['vegetables']!.text = '150';
-          _controllers['rice']!.text = '100';
-          _controllers['dosa']!.text = '200';
-          _controllers['laborManisha']!.text = '200';
-          _controllers['laborMidhun']!.text = '200';
+          _expenseTextController.text = '''fish 300rs
+meat 250rs
+chicken 200rs
+vegetables 150rs
+rice 100rs
+dosa 200rs
+labor manisha 200rs
+labor midhun 200rs''';
           break;
         case 'minimal':
-          _controllers['vegetables']!.text = '100';
-          _controllers['rice']!.text = '80';
-          _controllers['milk']!.text = '50';
-          _controllers['laborManisha']!.text = '200';
-          _controllers['laborMidhun']!.text = '200';
+          _expenseTextController.text = '''vegetables 100rs
+rice 80rs
+milk 50rs
+labor manisha 150rs
+labor midhun 150rs''';
           break;
       }
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Applied $templateName template'),
-        backgroundColor: AppTheme.primaryColor,
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
-  void _clearAll() {
-    setState(() {
-      _controllers.forEach((key, controller) => controller.clear());
-    });
-  }
-
-  @override
-  void dispose() {
-    _autoSaveTimer?.cancel();
-    _controllers.forEach((key, controller) => controller.dispose());
-    super.dispose();
-  }
-
-  double _calculateTotal() {
-    double total = 0.0;
-    _controllers.forEach((key, controller) {
-      total += double.tryParse(controller.text) ?? 0.0;
-    });
-    return total;
-  }
-
-  Future<void> _selectDate() async {
+  void _selectDate() async {
     // Save current draft before changing date
     _autoSaveTimer?.cancel();
     final draftData = <String, String>{};
-    _controllers.forEach((key, controller) {
-      if (controller.text.isNotEmpty) {
-        draftData[key] = controller.text;
-      }
-    });
+    if (_expenseTextController.text.trim().isNotEmpty) {
+      draftData['text'] = _expenseTextController.text;
+    }
     if (draftData.isNotEmpty) {
       await _storageService.saveExpenseDraft(_selectedDate, draftData);
     }
@@ -348,14 +242,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         final draft = await _storageService.loadExpenseDraft(_selectedDate);
         if (draft != null && draft.isNotEmpty) {
           setState(() {
-            // Clear all fields first
-            _controllers.forEach((key, controller) => controller.clear());
-            // Load draft values
-            draft.forEach((key, value) {
-              if (_controllers.containsKey(key) && value.isNotEmpty) {
-                _controllers[key]!.text = value;
-              }
-            });
+            _isDraftLoaded = true;
+            if (draft.containsKey('text')) {
+              _expenseTextController.text = draft['text']!;
+            }
           });
 
           if (mounted) {
@@ -371,7 +261,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       } else {
         // Clear fields if no draft exists
         setState(() {
-          _controllers.forEach((key, controller) => controller.clear());
+          _expenseTextController.clear();
+          _isDraftLoaded = false;
         });
       }
     }
@@ -379,24 +270,35 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   void _saveExpense() {
     if (_formKey.currentState!.validate()) {
+      final dashboardState = context.read<DashboardBloc>().state;
+      final contextType = dashboardState is DashboardLoaded ? dashboardState.selectedContext : 'hotel';
+
+      final parsedExpenses = _parseExpenseText(_expenseTextController.text);
+
       final expense = Expense(
         id: widget.existingExpense?.id ?? const Uuid().v4(),
         date: Formatters.normalizeDate(_selectedDate),
-        fish: double.tryParse(_controllers['fish']!.text) ?? 0.0,
-        meat: double.tryParse(_controllers['meat']!.text) ?? 0.0,
-        chicken: double.tryParse(_controllers['chicken']!.text) ?? 0.0,
-        milk: double.tryParse(_controllers['milk']!.text) ?? 0.0,
-        parotta: double.tryParse(_controllers['parotta']!.text) ?? 0.0,
-        pathiri: double.tryParse(_controllers['pathiri']!.text) ?? 0.0,
-        dosa: double.tryParse(_controllers['dosa']!.text) ?? 0.0,
-        appam: double.tryParse(_controllers['appam']!.text) ?? 0.0,
-        coconut: double.tryParse(_controllers['coconut']!.text) ?? 0.0,
-        vegetables: double.tryParse(_controllers['vegetables']!.text) ?? 0.0,
-        rice: double.tryParse(_controllers['rice']!.text) ?? 0.0,
-        laborManisha:
-            double.tryParse(_controllers['laborManisha']!.text) ?? 0.0,
-        laborMidhun: double.tryParse(_controllers['laborMidhun']!.text) ?? 0.0,
-        others: double.tryParse(_controllers['others']!.text) ?? 0.0,
+        context: contextType,
+        fish: parsedExpenses['fish'] ?? 0.0,
+        meat: parsedExpenses['meat'] ?? 0.0,
+        chicken: parsedExpenses['chicken'] ?? 0.0,
+        milk: parsedExpenses['milk'] ?? 0.0,
+        parotta: parsedExpenses['parotta'] ?? 0.0,
+        pathiri: parsedExpenses['pathiri'] ?? 0.0,
+        dosa: parsedExpenses['dosa'] ?? 0.0,
+        appam: parsedExpenses['appam'] ?? 0.0,
+        coconut: parsedExpenses['coconut'] ?? 0.0,
+        vegetables: parsedExpenses['vegetables'] ?? 0.0,
+        rice: parsedExpenses['rice'] ?? 0.0,
+        laborManisha: parsedExpenses['labor manisha'] ?? parsedExpenses['manisha'] ?? 0.0,
+        laborMidhun: parsedExpenses['labor midhun'] ?? parsedExpenses['midhun'] ?? 0.0,
+        others: parsedExpenses.values.where((v) => v != 0).fold(0.0, (sum, v) => sum + v) - 
+               (parsedExpenses['fish'] ?? 0) - (parsedExpenses['meat'] ?? 0) - (parsedExpenses['chicken'] ?? 0) -
+               (parsedExpenses['milk'] ?? 0) - (parsedExpenses['parotta'] ?? 0) - (parsedExpenses['pathiri'] ?? 0) -
+               (parsedExpenses['dosa'] ?? 0) - (parsedExpenses['appam'] ?? 0) - (parsedExpenses['coconut'] ?? 0) -
+               (parsedExpenses['vegetables'] ?? 0) - (parsedExpenses['rice'] ?? 0) -
+               (parsedExpenses['labor manisha'] ?? parsedExpenses['manisha'] ?? 0) -
+               (parsedExpenses['labor midhun'] ?? parsedExpenses['midhun'] ?? 0),
       );
 
       setState(() {
@@ -416,14 +318,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       onWillPop: () async {
         // Auto-save before exiting
         _autoSaveTimer?.cancel();
-        final hasData = _controllers.values.any((c) => c.text.isNotEmpty);
+        final hasData = _expenseTextController.text.trim().isNotEmpty;
         if (hasData) {
-          final draftData = <String, String>{};
-          _controllers.forEach((key, controller) {
-            if (controller.text.isNotEmpty) {
-              draftData[key] = controller.text;
-            }
-          });
+          final draftData = {'text': _expenseTextController.text};
           await _storageService.saveExpenseDraft(_selectedDate, draftData);
         }
         return true;
@@ -490,199 +387,165 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               );
             }
           },
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Date Selector
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.calendar_today,
-                                color: AppTheme.primaryColor),
-                            title: const Text('Date'),
-                            subtitle:
-                                Text(Formatters.formatDateFull(_selectedDate)),
-                            trailing:
-                                const Icon(Icons.arrow_forward_ios, size: 16),
-                            onTap: _selectDate,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Quick Actions
-                        if (widget.existingExpense == null) ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _copyFromPreviousDay,
-                                  icon:
-                                      const Icon(Icons.content_copy, size: 18),
-                                  label: const Text('Copy Yesterday'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.primaryColor,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              PopupMenuButton<String>(
-                                onSelected: _applyTemplate,
-                                icon: const Icon(Icons.app_registration),
-                                tooltip: 'Apply Template',
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'weekend',
-                                    child: Text('Weekend Template'),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'weekday',
-                                    child: Text('Weekday Template'),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'minimal',
-                                    child: Text('Minimal Template'),
-                                  ),
-                                ],
-                              ),
-                              IconButton(
-                                onPressed: _clearAll,
-                                icon: const Icon(Icons.clear_all),
-                                tooltip: 'Clear All',
-                                color: AppTheme.lossColor,
-                              ),
-                            ],
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-
-                        // Expense Fields
-                        ..._expenseFields.map((field) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: TextFormField(
-                                controller: _controllers[field['key']],
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                decoration: InputDecoration(
-                                  labelText: field['label'],
-                                  prefixText: '₹ ',
-                                  hintText: '0.00',
-                                  suffixIcon: Icon(field['icon']),
-                                ),
-                                onChanged: (value) {
-                                  setState(() {});
-                                  // Auto-save draft after user stops typing
-                                  _autoSaveDraft();
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return null;
-                                  }
-                                  final parsed = double.tryParse(value);
-                                  if (parsed == null) {
-                                    return 'Please enter a valid number';
-                                  }
-                                  if (parsed < 0) {
-                                    return 'Value cannot be negative';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            )),
-                      ],
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Date Selector
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.calendar_today,
+                          color: AppTheme.primaryColor),
+                      title: const Text('Date'),
+                      subtitle:
+                          Text(Formatters.formatDateFull(_selectedDate)),
+                      trailing:
+                          const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: _selectDate,
                     ),
                   ),
-                ),
-              ),
+                  const SizedBox(height: 16),
 
-              // Bottom section with total and save button
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.cardColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Total
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lossColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total Expense',
-                              style: AppTheme.headingSmall.copyWith(
-                                color: AppTheme.lossColor,
-                              ),
+                  // Quick Actions
+                  if (widget.existingExpense == null) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _copyFromPreviousDay,
+                            icon:
+                                const Icon(Icons.content_copy, size: 18),
+                            label: const Text('Copy Yesterday'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.primaryColor,
                             ),
-                            Text(
-                              Formatters.formatCurrency(_calculateTotal()),
-                              style: AppTheme.headingMedium.copyWith(
-                                color: AppTheme.lossColor,
-                              ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          onSelected: _applyTemplate,
+                          icon: const Icon(Icons.app_registration),
+                          tooltip: 'Apply Template',
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'weekend',
+                              child: Text('Weekend Template'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'weekday',
+                              child: Text('Weekday Template'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'minimal',
+                              child: Text('Minimal Template'),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 16),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 24),
 
-                      // Save Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _saveExpense,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: AppTheme.primaryColor,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  widget.existingExpense != null
-                                      ? 'Update Expense'
-                                      : 'Save Expense',
-                                  style: AppTheme.bodyLarge.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                  // Expense Text Input
+                  TextFormField(
+                    controller: _expenseTextController,
+                    maxLines: 10,
+                    decoration: const InputDecoration(
+                      labelText: 'Expense Details',
+                      hintText: 'Enter expenses like:\nmilk 50rs\nchicken 100rs\nmovie -200rs',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) {
+                      setState(() {});
+                      // Auto-save draft after user stops typing
+                      _autoSaveDraft();
+                    },
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter expense details';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Bottom section with total and save button
+        bottomNavigationBar: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.cardColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Expense',
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        Formatters.formatCurrency(_calculateTotal()),
+                        style: AppTheme.headingMedium.copyWith(
+                          color: AppTheme.lossColor,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _saveExpense,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.lossColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text('Save Expense'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _expenseTextController.dispose();
+    _autoSaveTimer?.cancel();
+    super.dispose();
   }
 }

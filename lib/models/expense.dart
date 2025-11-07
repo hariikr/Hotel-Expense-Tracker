@@ -63,6 +63,7 @@ class Expense extends Equatable {
     return Expense(
       id: json['id'] as String,
       date: DateTime.parse(json['date'] as String),
+      context: json['context'] as String? ?? 'hotel',
       fish: _parseDouble(json['fish']),
       meat: _parseDouble(json['meat']),
       chicken: _parseDouble(json['chicken']),
@@ -90,6 +91,7 @@ class Expense extends Equatable {
     return {
       'id': id,
       'date': date.toIso8601String(),
+      'context': context,
       'fish': fish,
       'meat': meat,
       'chicken': chicken,
@@ -110,6 +112,7 @@ class Expense extends Equatable {
   Map<String, dynamic> toInsertJson() {
     return {
       'date': date.toIso8601String(),
+      'context': context,
       'fish': fish,
       'meat': meat,
       'chicken': chicken,
@@ -138,6 +141,7 @@ class Expense extends Equatable {
   Expense copyWith({
     String? id,
     DateTime? date,
+    String? context,
     double? fish,
     double? meat,
     double? chicken,
@@ -158,6 +162,7 @@ class Expense extends Equatable {
     return Expense(
       id: id ?? this.id,
       date: date ?? this.date,
+      context: context ?? this.context,
       fish: fish ?? this.fish,
       meat: meat ?? this.meat,
       chicken: chicken ?? this.chicken,
@@ -181,6 +186,7 @@ class Expense extends Equatable {
   List<Object?> get props => [
         id,
         date,
+        context,
         fish,
         meat,
         chicken,

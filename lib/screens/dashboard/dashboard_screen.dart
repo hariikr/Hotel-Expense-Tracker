@@ -8,6 +8,7 @@ import '../../utils/formatters.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/best_profit_card.dart';
 import '../widgets/quick_action_button.dart';
+import '../widgets/context_selector.dart';
 import 'add_income_screen.dart';
 import 'add_expense_screen.dart';
 import 'calendar_screen.dart';
@@ -31,8 +32,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hotel Expense Tracker'),
+        title: BlocBuilder<DashboardBloc, DashboardState>(
+          builder: (context, state) {
+            final contextType = state is DashboardLoaded ? state.selectedContext : 'hotel';
+            return Text('${contextType.toUpperCase()} Expense Tracker');
+          },
+        ),
         actions: [
+          BlocBuilder<DashboardBloc, DashboardState>(
+            builder: (context, state) {
+              if (state is DashboardLoaded) {
+                return ContextSelector(
+                  selectedContext: state.selectedContext,
+                  onContextChanged: (newContext) {
+                    context.read<DashboardBloc>().add(ChangeContext(newContext));
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -151,7 +170,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Expanded(
               child: StatCard(
-                title: 'Total Income',
+                title: state.selectedContext == 'house' ? 'Income from Hotel' : 'Total Income',
                 value: Formatters.formatCurrency(state.totalIncome),
                 icon: Icons.trending_up,
                 color: AppTheme.profitColor,
@@ -185,40 +204,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildQuickActions(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: QuickActionButton(
-            label: 'Add Income',
-            icon: Icons.add_circle_outline,
-            color: AppTheme.profitColor,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddIncomeScreen(),
+    return BlocBuilder<DashboardBloc, DashboardState>(
+      builder: (context, state) {
+        final isHotel = state is DashboardLoaded && state.selectedContext == 'hotel';
+        return Row(
+          children: [
+            if (isHotel) ...[
+              Expanded(
+                child: QuickActionButton(
+                  label: 'Add Income',
+                  icon: Icons.add_circle_outline,
+                  color: AppTheme.profitColor,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddIncomeScreen(),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: QuickActionButton(
-            label: 'Add Expense',
-            icon: Icons.remove_circle_outline,
-            color: AppTheme.lossColor,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddExpenseScreen(),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: QuickActionButton(
+                label: 'Add Expense',
+                icon: Icons.remove_circle_outline,
+                color: AppTheme.lossColor,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddExpenseScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

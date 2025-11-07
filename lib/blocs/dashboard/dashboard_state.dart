@@ -24,6 +24,7 @@ class DashboardLoaded extends DashboardState {
   final double totalIncome;
   final double totalExpense;
   final double totalProfit;
+  final String selectedContext;
 
   const DashboardLoaded({
     required this.allSummaries,
@@ -33,6 +34,7 @@ class DashboardLoaded extends DashboardState {
     required this.totalIncome,
     required this.totalExpense,
     required this.totalProfit,
+    this.selectedContext = 'hotel',
   });
 
   DashboardLoaded copyWith({
@@ -43,6 +45,7 @@ class DashboardLoaded extends DashboardState {
     double? totalIncome,
     double? totalExpense,
     double? totalProfit,
+    String? selectedContext,
   }) {
     return DashboardLoaded(
       allSummaries: allSummaries ?? this.allSummaries,
@@ -52,6 +55,7 @@ class DashboardLoaded extends DashboardState {
       totalIncome: totalIncome ?? this.totalIncome,
       totalExpense: totalExpense ?? this.totalExpense,
       totalProfit: totalProfit ?? this.totalProfit,
+      selectedContext: selectedContext ?? this.selectedContext,
     );
   }
 
@@ -64,6 +68,7 @@ class DashboardLoaded extends DashboardState {
         totalIncome,
         totalExpense,
         totalProfit,
+        selectedContext,
       ];
 }
 

@@ -64,3 +64,26 @@ $$ LANGUAGE plpgsql;
 
 ## After Migration:
 The app will now store and display meals count for each day!
+
+## To add context support for hotel/house switching:
+
+Run this SQL in your Supabase SQL Editor:
+
+```sql
+-- Add context to income table
+ALTER TABLE income ADD COLUMN IF NOT EXISTS context TEXT DEFAULT 'hotel' CHECK (context IN ('hotel', 'house'));
+
+-- Add context to expense table
+ALTER TABLE expense ADD COLUMN IF NOT EXISTS context TEXT DEFAULT 'hotel' CHECK (context IN ('hotel', 'house'));
+
+-- Update existing records to have 'hotel' context
+UPDATE income SET context = 'hotel' WHERE context IS NULL;
+UPDATE expense SET context = 'hotel' WHERE context IS NULL;
+
+-- Make context NOT NULL
+ALTER TABLE income ALTER COLUMN context SET NOT NULL;
+ALTER TABLE expense ALTER COLUMN context SET NOT NULL;
+```
+
+## After Context Migration:
+The app now supports switching between hotel and house expense tracking!

@@ -9,11 +9,21 @@ abstract class DashboardEvent extends Equatable {
 }
 
 class LoadDashboardData extends DashboardEvent {
-  const LoadDashboardData();
+  final String? context;
+
+  const LoadDashboardData({this.context});
+
+  @override
+  List<Object?> get props => [context];
 }
 
 class RefreshDashboardData extends DashboardEvent {
-  const RefreshDashboardData();
+  final String? context;
+
+  const RefreshDashboardData({this.context});
+
+  @override
+  List<Object?> get props => [context];
 }
 
 class LoadWeeklySummary extends DashboardEvent {
@@ -42,4 +52,13 @@ class DailySummaryUpdated extends DashboardEvent {
 
   @override
   List<Object?> get props => [summaries];
+}
+
+class ChangeContext extends DashboardEvent {
+  final String context;
+
+  const ChangeContext(this.context);
+
+  @override
+  List<Object?> get props => [context];
 }

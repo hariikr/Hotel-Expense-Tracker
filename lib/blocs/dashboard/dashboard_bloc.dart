@@ -15,6 +15,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<LoadWeeklySummary>(_onLoadWeeklySummary);
     on<LoadMonthlySummary>(_onLoadMonthlySummary);
     on<DailySummaryUpdated>(_onDailySummaryUpdated);
+    on<ChangeContext>(_onChangeContext);
 
     _subscribeToRealtime();
   }
@@ -33,17 +34,28 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     emit(const DashboardLoading());
     try {
-      final summaries = await _supabaseService.fetchAllDailySummaries();
+      final context = event.context ?? 'hotel';
+      final summaries = await _supabaseService.fetchAllDailySummaries(context: context);
       final bestProfit = _supabaseService.getBestProfitDay(summaries);
 
       double totalIncome = 0;
       double totalExpense = 0;
-      double totalProfit = 0;
 
       for (var summary in summaries) {
         totalIncome += summary.totalIncome;
         totalExpense += summary.totalExpense;
-        totalProfit += summary.profit;
+      }
+
+      // For house context, income is the total profit from hotel
+      if (context == 'house') {
+        final hotelSummaries = await _supabaseService.fetchAllDailySummaries(context: 'hotel');
+        double hotelTotalIncome = 0;
+        double hotelTotalExpense = 0;
+        for (var summary in hotelSummaries) {
+          hotelTotalIncome += summary.totalIncome;
+          hotelTotalExpense += summary.totalExpense;
+        }
+        totalIncome = hotelTotalIncome - hotelTotalExpense; // Hotel profit as house income
       }
 
       emit(DashboardLoaded(
@@ -51,7 +63,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         bestProfitDay: bestProfit,
         totalIncome: totalIncome,
         totalExpense: totalExpense,
-        totalProfit: totalProfit,
+        totalProfit: totalIncome - totalExpense, // Recalculate profit
+        selectedContext: context,
       ));
     } catch (e) {
       emit(DashboardError(e.toString()));
@@ -62,39 +75,43 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     RefreshDashboardData event,
     Emitter<DashboardState> emit,
   ) async {
-    try {
-      final summaries = await _supabaseService.fetchAllDailySummaries();
-      final bestProfit = _supabaseService.getBestProfitDay(summaries);
+    if (state is DashboardLoaded) {
+      try {
+        final context = event.context ?? (state as DashboardLoaded).selectedContext;
+        final summaries = await _supabaseService.fetchAllDailySummaries(context: context);
+        final bestProfit = _supabaseService.getBestProfitDay(summaries);
 
-      double totalIncome = 0;
-      double totalExpense = 0;
-      double totalProfit = 0;
+        double totalIncome = 0;
+        double totalExpense = 0;
 
-      for (var summary in summaries) {
-        totalIncome += summary.totalIncome;
-        totalExpense += summary.totalExpense;
-        totalProfit += summary.profit;
-      }
+        for (var summary in summaries) {
+          totalIncome += summary.totalIncome;
+          totalExpense += summary.totalExpense;
+        }
 
-      if (state is DashboardLoaded) {
+        // For house context, income is the total profit from hotel
+        if (context == 'house') {
+          final hotelSummaries = await _supabaseService.fetchAllDailySummaries(context: 'hotel');
+          double hotelTotalIncome = 0;
+          double hotelTotalExpense = 0;
+          for (var summary in hotelSummaries) {
+            hotelTotalIncome += summary.totalIncome;
+            hotelTotalExpense += summary.totalExpense;
+          }
+          totalIncome = hotelTotalIncome - hotelTotalExpense; // Hotel profit as house income
+        }
+
         emit((state as DashboardLoaded).copyWith(
           allSummaries: summaries,
           bestProfitDay: bestProfit,
           totalIncome: totalIncome,
           totalExpense: totalExpense,
-          totalProfit: totalProfit,
+          totalProfit: totalIncome - totalExpense, // Recalculate profit
+          selectedContext: context,
         ));
-      } else {
-        emit(DashboardLoaded(
-          allSummaries: summaries,
-          bestProfitDay: bestProfit,
-          totalIncome: totalIncome,
-          totalExpense: totalExpense,
-          totalProfit: totalProfit,
-        ));
+      } catch (e) {
+        emit(DashboardError(e.toString()));
       }
-    } catch (e) {
-      emit(DashboardError(e.toString()));
     }
   }
 
@@ -104,8 +121,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is DashboardLoaded) {
       try {
+        final context = (state as DashboardLoaded).selectedContext;
         final weeklySummary =
-            await _supabaseService.fetchWeeklySummary(event.weekStart);
+            await _supabaseService.fetchWeeklySummary(event.weekStart, context: context);
         emit((state as DashboardLoaded).copyWith(
           weeklySummary: weeklySummary,
         ));
@@ -122,8 +140,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is DashboardLoaded) {
       try {
+        final context = (state as DashboardLoaded).selectedContext;
         final monthlySummary =
-            await _supabaseService.fetchMonthlySummary(event.year, event.month);
+            await _supabaseService.fetchMonthlySummary(event.year, event.month, context: context);
         emit((state as DashboardLoaded).copyWith(
           monthlySummary: monthlySummary,
         ));
@@ -141,15 +160,15 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     if (state is DashboardLoaded) {
       final bestProfit = _supabaseService.getBestProfitDay(event.summaries);
 
-      double totalIncome = 0;
-      double totalExpense = 0;
-      double totalProfit = 0;
+        double totalIncome = 0;
+        double totalExpense = 0;
 
-      for (var summary in event.summaries) {
-        totalIncome += summary.totalIncome;
-        totalExpense += summary.totalExpense;
-        totalProfit += summary.profit;
-      }
+        for (var summary in event.summaries) {
+          totalIncome += summary.totalIncome;
+          totalExpense += summary.totalExpense;
+        }
+
+        final totalProfit = totalIncome - totalExpense;
 
       emit((state as DashboardLoaded).copyWith(
         allSummaries: event.summaries,
@@ -158,6 +177,19 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         totalExpense: totalExpense,
         totalProfit: totalProfit,
       ));
+    }
+  }
+
+  void _onChangeContext(
+    ChangeContext event,
+    Emitter<DashboardState> emit,
+  ) {
+    if (state is DashboardLoaded) {
+      emit((state as DashboardLoaded).copyWith(
+        selectedContext: event.context,
+      ));
+      // Reload data with new context
+      add(LoadDashboardData(context: event.context));
     }
   }
 
