@@ -16,6 +16,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<LoadMonthlySummary>(_onLoadMonthlySummary);
     on<DailySummaryUpdated>(_onDailySummaryUpdated);
     on<ChangeContext>(_onChangeContext);
+    on<DeleteDailyData>(_onDeleteDailyData);
 
     _subscribeToRealtime();
   }
@@ -121,7 +122,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is DashboardLoaded) {
       try {
-        final context = (state as DashboardLoaded).selectedContext;
+        final context = event.context ?? (state as DashboardLoaded).selectedContext;
         final weeklySummary =
             await _supabaseService.fetchWeeklySummary(event.weekStart, context: context);
         emit((state as DashboardLoaded).copyWith(
@@ -140,7 +141,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is DashboardLoaded) {
       try {
-        final context = (state as DashboardLoaded).selectedContext;
+        final context = event.context ?? (state as DashboardLoaded).selectedContext;
         final monthlySummary =
             await _supabaseService.fetchMonthlySummary(event.year, event.month, context: context);
         emit((state as DashboardLoaded).copyWith(
@@ -190,6 +191,39 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       ));
       // Reload data with new context
       add(LoadDashboardData(context: event.context));
+    }
+  }
+
+  Future<void> _onDeleteDailyData(
+    DeleteDailyData event,
+    Emitter<DashboardState> emit,
+  ) async {
+    if (state is DashboardLoaded) {
+      try {
+        // Get all income records for the specific date and context
+        final incomeRecords = await _supabaseService.fetchIncomeByDate(
+          event.date,
+          context: event.context,
+        );
+        if (incomeRecords != null) {
+          await _supabaseService.deleteIncome(incomeRecords.id);
+        }
+
+        // Get all expense records for the specific date and context
+        final expenseRecords = await _supabaseService.fetchExpenseByDate(
+          event.date,
+          context: event.context,
+        );
+        if (expenseRecords != null) {
+          await _supabaseService.deleteExpense(expenseRecords.id);
+        }
+
+        // Reload the dashboard data to reflect the deletion
+        add(LoadDashboardData(context: event.context));
+      } catch (e) {
+        // If there's an error, emit error state or just log it and continue
+        print('Error deleting daily data: $e');
+      }
     }
   }
 

@@ -122,8 +122,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _buildSummarySection(state),
                     const SizedBox(height: 24),
 
-                    // Best Profit Day
-                    if (state.bestProfitDay != null) ...[
+                    // Best Profit Day - Only show for Hotel context
+                    if (state.bestProfitDay != null && state.selectedContext != 'house') ...[
                       Text(
                         'Best Performance',
                         style: AppTheme.headingSmall,
@@ -206,49 +206,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildQuickActions(BuildContext context) {
     return BlocBuilder<DashboardBloc, DashboardState>(
       builder: (context, state) {
-        final isHotel = state is DashboardLoaded && state.selectedContext == 'hotel';
-        return Row(
-          children: [
-            if (isHotel) ...[
+        if (state is DashboardLoaded) {
+          final isHotel = state.selectedContext == 'hotel';
+          final shouldShowQuickActions = state.selectedContext != 'house';
+          
+          if (!shouldShowQuickActions) {
+            return const SizedBox.shrink(); // Don't show quick actions in house context
+          }
+          
+          return Row(
+            children: [
+              if (isHotel) ...[
+                Expanded(
+                  child: QuickActionButton(
+                    label: 'Add Income',
+                    icon: Icons.add_circle_outline,
+                    color: AppTheme.profitColor,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AddIncomeScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
               Expanded(
                 child: QuickActionButton(
-                  label: 'Add Income',
-                  icon: Icons.add_circle_outline,
-                  color: AppTheme.profitColor,
+                  label: 'Add Expense',
+                  icon: Icons.remove_circle_outline,
+                  color: AppTheme.lossColor,
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const AddIncomeScreen(),
+                        builder: (context) => const AddExpenseScreen(),
                       ),
                     );
                   },
                 ),
               ),
-              const SizedBox(width: 12),
             ],
-            Expanded(
-              child: QuickActionButton(
-                label: 'Add Expense',
-                icon: Icons.remove_circle_outline,
-                color: AppTheme.lossColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AddExpenseScreen(),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
+          );
+        }
+        return const SizedBox.shrink(); // Don't show quick actions if state is not loaded
       },
     );
   }
 
   Widget _buildNavigationCards(BuildContext context) {
+    final currentState = context.read<DashboardBloc>().state;
+    final shouldShowAnalytics = currentState is DashboardLoaded 
+        ? currentState.selectedContext != 'house' 
+        : true; // Show analytics by default if state is not loaded yet
+    
     return Column(
       children: [
         _buildNavigationCard(
@@ -267,21 +281,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
         ),
         const SizedBox(height: 12),
-        _buildNavigationCard(
-          context,
-          title: 'Analytics',
-          subtitle: 'View charts and trends',
-          icon: Icons.bar_chart,
-          color: AppTheme.accentColor,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AnalyticsScreen(),
-              ),
-            );
-          },
-        ),
+        if (shouldShowAnalytics) ...[
+          _buildNavigationCard(
+            context,
+            title: 'Analytics',
+            subtitle: 'View charts and trends',
+            icon: Icons.bar_chart,
+            color: AppTheme.accentColor,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AnalyticsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ],
     );
   }

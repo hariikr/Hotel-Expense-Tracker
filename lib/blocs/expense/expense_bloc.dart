@@ -45,7 +45,8 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     Emitter<ExpenseState> emit,
   ) async {
     try {
-      final expense = await _supabaseService.fetchExpenseByDate(event.date);
+      final expense = await _supabaseService.fetchExpenseByDate(event.date,
+          context: event.context);
       if (state is ExpenseLoaded) {
         emit((state as ExpenseLoaded).copyWith(selectedExpense: expense));
       } else {

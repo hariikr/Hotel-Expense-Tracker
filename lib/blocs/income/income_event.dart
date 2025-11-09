@@ -14,11 +14,12 @@ class LoadAllIncome extends IncomeEvent {
 
 class LoadIncomeByDate extends IncomeEvent {
   final DateTime date;
+  final String context;
 
-  const LoadIncomeByDate(this.date);
+  const LoadIncomeByDate(this.date, {this.context = 'hotel'});
 
   @override
-  List<Object?> get props => [date];
+  List<Object?> get props => [date, context];
 }
 
 class UpsertIncome extends IncomeEvent {

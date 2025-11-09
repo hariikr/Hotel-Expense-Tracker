@@ -14,11 +14,12 @@ class LoadAllExpense extends ExpenseEvent {
 
 class LoadExpenseByDate extends ExpenseEvent {
   final DateTime date;
+  final String context;
 
-  const LoadExpenseByDate(this.date);
+  const LoadExpenseByDate(this.date, {this.context = 'hotel'});
 
   @override
-  List<Object?> get props => [date];
+  List<Object?> get props => [date, context];
 }
 
 class UpsertExpense extends ExpenseEvent {

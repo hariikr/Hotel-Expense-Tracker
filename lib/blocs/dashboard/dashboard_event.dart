@@ -28,21 +28,23 @@ class RefreshDashboardData extends DashboardEvent {
 
 class LoadWeeklySummary extends DashboardEvent {
   final DateTime weekStart;
+  final String? context;
 
-  const LoadWeeklySummary(this.weekStart);
+  const LoadWeeklySummary(this.weekStart, {this.context});
 
   @override
-  List<Object?> get props => [weekStart];
+  List<Object?> get props => [weekStart, context];
 }
 
 class LoadMonthlySummary extends DashboardEvent {
   final int year;
   final int month;
+  final String? context;
 
-  const LoadMonthlySummary(this.year, this.month);
+  const LoadMonthlySummary(this.year, this.month, {this.context});
 
   @override
-  List<Object?> get props => [year, month];
+  List<Object?> get props => [year, month, context];
 }
 
 class DailySummaryUpdated extends DashboardEvent {
@@ -61,4 +63,14 @@ class ChangeContext extends DashboardEvent {
 
   @override
   List<Object?> get props => [context];
+}
+
+class DeleteDailyData extends DashboardEvent {
+  final DateTime date;
+  final String context;
+
+  const DeleteDailyData(this.date, {this.context = 'hotel'});
+
+  @override
+  List<Object?> get props => [date, context];
 }

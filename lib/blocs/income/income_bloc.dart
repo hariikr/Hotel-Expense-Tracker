@@ -45,7 +45,8 @@ class IncomeBloc extends Bloc<IncomeEvent, IncomeState> {
     Emitter<IncomeState> emit,
   ) async {
     try {
-      final income = await _supabaseService.fetchIncomeByDate(event.date);
+      final income = await _supabaseService.fetchIncomeByDate(event.date,
+          context: event.context);
       if (state is IncomeLoaded) {
         emit((state as IncomeLoaded).copyWith(selectedIncome: income));
       } else {

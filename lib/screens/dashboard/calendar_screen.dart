@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../blocs/dashboard/dashboard_bloc.dart';
 import '../../blocs/dashboard/dashboard_state.dart';
+import '../../blocs/dashboard/dashboard_event.dart';
 import '../../models/daily_summary.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/formatters.dart';
@@ -229,6 +230,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              // Delete button for hotel context only
+              BlocBuilder<DashboardBloc, DashboardState>(
+                builder: (context, state) {
+                  if (state is DashboardLoaded && state.selectedContext == 'hotel') {
+                    return ElevatedButton.icon(
+                      onPressed: () => _showDeleteConfirmationDialog(context),
+                      icon: const Icon(Icons.delete, color: Colors.white),
+                      label: const Text('Delete Data', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        minimumSize: const Size(double.infinity, 40),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink(); // Hide delete button if not in hotel context
+                },
+              ),
             ] else ...[
               const Center(
                 child: Padding(
@@ -281,5 +300,87 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ],
     );
+  }
+
+  /// Show confirmation dialog before deleting data
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: Text(
+            'Are you sure you want to delete all data for ${Formatters.formatDateFull(_selectedDay!)}? '
+            'This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(), // Cancel
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                _deleteDataForSelectedDay();
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text('Delete'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Delete income and expense data for the selected day
+  Future<void> _deleteDataForSelectedDay() async {
+    try {
+      // Show a loading indicator
+      final snackBar = SnackBar(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 10),
+            const Text('Deleting data...'),
+          ],
+        ),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+      // Get the current context from the dashboard state
+      final currentState = context.read<DashboardBloc>().state;
+      final currentContext = currentState is DashboardLoaded 
+          ? currentState.selectedContext 
+          : 'hotel';
+
+      // Dispatch the delete event
+      context.read<DashboardBloc>().add(
+        DeleteDailyData(_selectedDay!, context: currentContext),
+      );
+
+      // Hide the loading snackbar 
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data deleted successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // Hide the loading snackbar
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting data: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

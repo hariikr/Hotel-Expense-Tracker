@@ -23,12 +23,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    // Load weekly and monthly summaries
+    // Load weekly and monthly summaries based on the current context in state
     final now = DateTime.now();
-    context
-        .read<DashboardBloc>()
-        .add(LoadWeeklySummary(Formatters.getWeekStart(now)));
-    context.read<DashboardBloc>().add(LoadMonthlySummary(now.year, now.month));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentState = context.read<DashboardBloc>().state;
+      final currentContext = currentState is DashboardLoaded ? currentState.selectedContext : 'hotel';
+      
+      context
+          .read<DashboardBloc>()
+          .add(LoadWeeklySummary(Formatters.getWeekStart(now), context: currentContext));
+      context.read<DashboardBloc>().add(LoadMonthlySummary(now.year, now.month, context: currentContext));
+    });
   }
 
   @override
@@ -41,7 +46,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analytics'),
+        title: BlocBuilder<DashboardBloc, DashboardState>(
+          builder: (context, state) {
+            final contextType = state is DashboardLoaded ? state.selectedContext : 'hotel';
+            return Text('${contextType.toUpperCase()} Analytics');
+          },
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -74,6 +84,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final weekStart = Formatters.getWeekStart(now);
     final weekEnd = Formatters.getWeekEnd(now);
 
+    // Filter summaries by date and selected context
     final weeklySummaries = state.allSummaries.where((s) {
       final normalizedDate = Formatters.normalizeDate(s.date);
       final normalizedStart = Formatters.normalizeDate(weekStart);
