@@ -243,6 +243,42 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     return lines.join('\n');
   }
 
+  /// Helper method to build individual expense fields
+  Widget _buildExpenseField(String label, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        border: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+        ),
+        enabledBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+          borderSide: BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(8)),
+          borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
+      onChanged: (value) {
+        setState(() {});
+        // Auto-save draft after user stops typing
+        _autoSaveDraft();
+      },
+    );
+  }
+
   Future<void> _loadExistingExpense() async {
     final expense = widget.existingExpense!;
     setState(() {
@@ -620,7 +656,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Food Items', style: AppTheme.headingSmall),
+                              Text(
+                                'FOOD ITEMS',
+                                style: AppTheme.headingSmall.copyWith(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
                               const SizedBox(height: 12),
                               _buildExpenseField('Fish (₹)', _fishController),
                               const SizedBox(height: 8),
@@ -656,7 +699,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Labor & Other Expenses', style: AppTheme.headingSmall),
+                              Text(
+                                'LABOR & OTHER EXPENSES',
+                                style: AppTheme.headingSmall.copyWith(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
                               const SizedBox(height: 12),
                               _buildExpenseField('Labor Manisha (₹)', _laborManishaController),
                               const SizedBox(height: 8),

@@ -35,9 +35,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: BlocBuilder<DashboardBloc, DashboardState>(
           builder: (context, state) {
             final contextType = state is DashboardLoaded ? state.selectedContext : 'hotel';
-            return Text('${contextType.toUpperCase()} Expense Tracker');
+            return Text(
+              '${contextType.toUpperCase()} EXPENSE TRACKER',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            );
           },
         ),
+        titleSpacing: 16,
         actions: [
           BlocBuilder<DashboardBloc, DashboardState>(
             builder: (context, state) {
@@ -125,8 +132,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // Best Profit Day - Only show for Hotel context
                     if (state.bestProfitDay != null && state.selectedContext != 'house') ...[
                       Text(
-                        'Best Performance',
-                        style: AppTheme.headingSmall,
+                        'BEST PERFORMANCE',
+                        style: AppTheme.headingSmall.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       BestProfitCard(summary: state.bestProfitDay!),
@@ -135,8 +146,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     // Quick Actions
                     Text(
-                      'Quick Actions',
-                      style: AppTheme.headingSmall,
+                      'QUICK ACTIONS',
+                      style: AppTheme.headingSmall.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildQuickActions(context),
@@ -144,8 +159,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     // Navigation Cards
                     Text(
-                      'Navigate',
-                      style: AppTheme.headingSmall,
+                      'NAVIGATE',
+                      style: AppTheme.headingSmall.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildNavigationCards(context),
