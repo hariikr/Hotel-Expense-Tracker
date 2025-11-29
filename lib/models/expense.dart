@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 class Expense extends Equatable {
   final String id;
   final DateTime date;
-  final String context; // 'hotel' or 'house'
+  final String context; // Context identifier (defaults to 'hotel')
   final double fish;
   final double meat;
   final double chicken;

@@ -5,7 +5,8 @@ import 'blocs/dashboard/dashboard_bloc.dart';
 import 'blocs/income/income_bloc.dart';
 import 'blocs/expense/expense_bloc.dart';
 import 'services/supabase_service.dart';
-import 'screens/dashboard/dashboard_screen.dart';
+import 'services/language_service.dart';
+import 'screens/main_navigation.dart';
 import 'utils/app_theme.dart';
 import 'utils/constants.dart';
 
@@ -17,6 +18,9 @@ void main() async {
     url: AppConstants.supabaseUrl,
     anonKey: AppConstants.supabaseAnonKey,
   );
+
+  // Initialize Language Service
+  await LanguageService.initialize();
 
   runApp(const HotelExpenseTrackerApp());
 }
@@ -45,7 +49,7 @@ class HotelExpenseTrackerApp extends StatelessWidget {
         title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const DashboardScreen(),
+        home: const MainNavigation(),
       ),
     );
   }

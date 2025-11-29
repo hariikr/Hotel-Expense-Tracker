@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/income.dart';
 import '../models/expense.dart';
 import '../models/daily_summary.dart';
+import '../utils/app_logger.dart';
 
 class SupabaseService {
   final SupabaseClient _client;
@@ -15,7 +16,10 @@ class SupabaseService {
 
   /// Fetch all income records
   Future<List<Income>> fetchAllIncome({String? context}) async {
+    AppLogger.functionEntry('fetchAllIncome', params: {'context': context});
     try {
+      AppLogger.databaseOperation('SELECT', 'income',
+          criteria: {'order': 'date DESC', 'context': context});
       final response =
           await _client.from('income').select().order('date', ascending: false);
 
@@ -24,11 +28,19 @@ class SupabaseService {
           .toList();
 
       if (context != null) {
-        return incomes.where((income) => income.context == context).toList();
+        final filteredIncomes =
+            incomes.where((income) => income.context == context).toList();
+        AppLogger.functionExit('fetchAllIncome',
+            result:
+                'Found ${filteredIncomes.length} records for context: $context');
+        return filteredIncomes;
       }
 
+      AppLogger.functionExit('fetchAllIncome',
+          result: 'Found ${incomes.length} records');
       return incomes;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLogger.e('fetchAllIncome error: $e', stackTrace: stackTrace);
       throw Exception('Failed to fetch income: $e');
     }
   }
@@ -36,7 +48,11 @@ class SupabaseService {
   /// Fetch income for a specific date and context
   Future<Income?> fetchIncomeByDate(DateTime date,
       {String context = 'hotel'}) async {
+    AppLogger.functionEntry('fetchIncomeByDate',
+        params: {'date': date.toIso8601String(), 'context': context});
     try {
+      AppLogger.databaseOperation('SELECT', 'income',
+          criteria: {'date': date.toIso8601String(), 'context': context});
       final response = await _client
           .from('income')
           .select()
@@ -44,9 +60,16 @@ class SupabaseService {
           .eq('context', context)
           .maybeSingle();
 
-      if (response == null) return null;
-      return Income.fromJson(response as Map<String, dynamic>);
-    } catch (e) {
+      if (response == null) {
+        AppLogger.functionExit('fetchIncomeByDate', result: 'No record found');
+        return null;
+      }
+      final income = Income.fromJson(response as Map<String, dynamic>);
+      AppLogger.functionExit('fetchIncomeByDate',
+          result: 'Found record with ID: ${income.id}');
+      return income;
+    } catch (e, stackTrace) {
+      AppLogger.e('fetchIncomeByDate error: $e', stackTrace: stackTrace);
       throw Exception('Failed to fetch income by date: $e');
     }
   }
@@ -94,9 +117,13 @@ class SupabaseService {
 
   /// Delete income
   Future<void> deleteIncome(String id) async {
+    AppLogger.functionEntry('deleteIncome', params: {'id': id});
     try {
+      AppLogger.databaseOperation('DELETE', 'income', criteria: {'id': id});
       await _client.from('income').delete().eq('id', id);
-    } catch (e) {
+      AppLogger.functionExit('deleteIncome', result: 'Successfully deleted');
+    } catch (e, stackTrace) {
+      AppLogger.e('deleteIncome error: $e', stackTrace: stackTrace);
       throw Exception('Failed to delete income: $e');
     }
   }
@@ -197,7 +224,10 @@ class SupabaseService {
 
   /// Fetch all daily summaries
   Future<List<DailySummary>> fetchAllDailySummaries({String? context}) async {
+    AppLogger.functionEntry('fetchAllDailySummaries',
+        params: {'context': context});
     try {
+      AppLogger.i('Fetching daily summaries for context: $context');
       // Fetch filtered expenses and incomes
       final expenses = await fetchAllExpense(context: context);
       final incomes = await fetchAllIncome(context: context);
@@ -246,8 +276,11 @@ class SupabaseService {
       }
 
       summaries.sort((a, b) => b.date.compareTo(a.date)); // Most recent first
+      AppLogger.functionExit('fetchAllDailySummaries',
+          result: 'Generated ${summaries.length} daily summaries');
       return summaries;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLogger.e('fetchAllDailySummaries error: $e', stackTrace: stackTrace);
       throw Exception('Failed to fetch daily summaries: $e');
     }
   }

@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/supabase_service.dart';
 import 'dashboard_event.dart';
 import 'dashboard_state.dart';
+import '../../utils/app_logger.dart';
 
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final SupabaseService _supabaseService;
@@ -15,7 +16,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<LoadWeeklySummary>(_onLoadWeeklySummary);
     on<LoadMonthlySummary>(_onLoadMonthlySummary);
     on<DailySummaryUpdated>(_onDailySummaryUpdated);
-    on<ChangeContext>(_onChangeContext);
     on<DeleteDailyData>(_onDeleteDailyData);
 
     _subscribeToRealtime();
@@ -33,10 +33,13 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     LoadDashboardData event,
     Emitter<DashboardState> emit,
   ) async {
+    AppLogger.functionEntry('_onLoadDashboardData');
     emit(const DashboardLoading());
     try {
-      final context = event.context ?? 'hotel';
-      final summaries = await _supabaseService.fetchAllDailySummaries(context: context);
+      AppLogger.databaseOperation('SELECT', 'daily_summaries',
+          criteria: {'context': 'hotel'});
+      final summaries =
+          await _supabaseService.fetchAllDailySummaries(context: 'hotel');
       final bestProfit = _supabaseService.getBestProfitDay(summaries);
 
       double totalIncome = 0;
@@ -47,27 +50,17 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         totalExpense += summary.totalExpense;
       }
 
-      // For house context, income is the total profit from hotel
-      if (context == 'house') {
-        final hotelSummaries = await _supabaseService.fetchAllDailySummaries(context: 'hotel');
-        double hotelTotalIncome = 0;
-        double hotelTotalExpense = 0;
-        for (var summary in hotelSummaries) {
-          hotelTotalIncome += summary.totalIncome;
-          hotelTotalExpense += summary.totalExpense;
-        }
-        totalIncome = hotelTotalIncome - hotelTotalExpense; // Hotel profit as house income
-      }
-
       emit(DashboardLoaded(
         allSummaries: summaries,
         bestProfitDay: bestProfit,
         totalIncome: totalIncome,
         totalExpense: totalExpense,
-        totalProfit: totalIncome - totalExpense, // Recalculate profit
-        selectedContext: context,
+        totalProfit: totalIncome - totalExpense,
+        selectedContext: 'hotel',
       ));
-    } catch (e) {
+      AppLogger.functionExit('_onLoadDashboardData', result: 'success');
+    } catch (e, stackTrace) {
+      AppLogger.e('_onLoadDashboardData error: $e', stackTrace: stackTrace);
       emit(DashboardError(e.toString()));
     }
   }
@@ -76,10 +69,13 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     RefreshDashboardData event,
     Emitter<DashboardState> emit,
   ) async {
+    AppLogger.functionEntry('_onRefreshDashboardData');
     if (state is DashboardLoaded) {
       try {
-        final context = event.context ?? (state as DashboardLoaded).selectedContext;
-        final summaries = await _supabaseService.fetchAllDailySummaries(context: context);
+        AppLogger.databaseOperation('SELECT', 'daily_summaries',
+            criteria: {'context': 'hotel'});
+        final summaries =
+            await _supabaseService.fetchAllDailySummaries(context: 'hotel');
         final bestProfit = _supabaseService.getBestProfitDay(summaries);
 
         double totalIncome = 0;
@@ -90,29 +86,22 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           totalExpense += summary.totalExpense;
         }
 
-        // For house context, income is the total profit from hotel
-        if (context == 'house') {
-          final hotelSummaries = await _supabaseService.fetchAllDailySummaries(context: 'hotel');
-          double hotelTotalIncome = 0;
-          double hotelTotalExpense = 0;
-          for (var summary in hotelSummaries) {
-            hotelTotalIncome += summary.totalIncome;
-            hotelTotalExpense += summary.totalExpense;
-          }
-          totalIncome = hotelTotalIncome - hotelTotalExpense; // Hotel profit as house income
-        }
-
         emit((state as DashboardLoaded).copyWith(
           allSummaries: summaries,
           bestProfitDay: bestProfit,
           totalIncome: totalIncome,
           totalExpense: totalExpense,
-          totalProfit: totalIncome - totalExpense, // Recalculate profit
-          selectedContext: context,
+          totalProfit: totalIncome - totalExpense,
+          selectedContext: 'hotel',
         ));
-      } catch (e) {
+        AppLogger.functionExit('_onRefreshDashboardData', result: 'success');
+      } catch (e, stackTrace) {
+        AppLogger.e('_onRefreshDashboardData error: $e',
+            stackTrace: stackTrace);
         emit(DashboardError(e.toString()));
       }
+    } else {
+      AppLogger.w('_onRefreshDashboardData: state is not DashboardLoaded');
     }
   }
 
@@ -120,18 +109,25 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     LoadWeeklySummary event,
     Emitter<DashboardState> emit,
   ) async {
+    AppLogger.functionEntry('_onLoadWeeklySummary',
+        params: {'weekStart': event.weekStart});
     if (state is DashboardLoaded) {
       try {
-        final context = event.context ?? (state as DashboardLoaded).selectedContext;
-        final weeklySummary =
-            await _supabaseService.fetchWeeklySummary(event.weekStart, context: context);
+        AppLogger.databaseOperation('SELECT', 'weekly_summary',
+            criteria: {'week_start': event.weekStart, 'context': 'hotel'});
+        final weeklySummary = await _supabaseService
+            .fetchWeeklySummary(event.weekStart, context: 'hotel');
         emit((state as DashboardLoaded).copyWith(
           weeklySummary: weeklySummary,
         ));
-      } catch (e) {
+        AppLogger.functionExit('_onLoadWeeklySummary', result: 'success');
+      } catch (e, stackTrace) {
+        AppLogger.e('_onLoadWeeklySummary error: $e', stackTrace: stackTrace);
         // Keep the current state, just log the error
         print('Error loading weekly summary: $e');
       }
+    } else {
+      AppLogger.w('_onLoadWeeklySummary: state is not DashboardLoaded');
     }
   }
 
@@ -139,18 +135,28 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     LoadMonthlySummary event,
     Emitter<DashboardState> emit,
   ) async {
+    AppLogger.functionEntry('_onLoadMonthlySummary',
+        params: {'year': event.year, 'month': event.month});
     if (state is DashboardLoaded) {
       try {
-        final context = event.context ?? (state as DashboardLoaded).selectedContext;
-        final monthlySummary =
-            await _supabaseService.fetchMonthlySummary(event.year, event.month, context: context);
+        AppLogger.databaseOperation('SELECT', 'monthly_summary', criteria: {
+          'year': event.year,
+          'month': event.month,
+          'context': 'hotel'
+        });
+        final monthlySummary = await _supabaseService
+            .fetchMonthlySummary(event.year, event.month, context: 'hotel');
         emit((state as DashboardLoaded).copyWith(
           monthlySummary: monthlySummary,
         ));
-      } catch (e) {
+        AppLogger.functionExit('_onLoadMonthlySummary', result: 'success');
+      } catch (e, stackTrace) {
+        AppLogger.e('_onLoadMonthlySummary error: $e', stackTrace: stackTrace);
         // Keep the current state, just log the error
         print('Error loading monthly summary: $e');
       }
+    } else {
+      AppLogger.w('_onLoadMonthlySummary: state is not DashboardLoaded');
     }
   }
 
@@ -161,15 +167,15 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     if (state is DashboardLoaded) {
       final bestProfit = _supabaseService.getBestProfitDay(event.summaries);
 
-        double totalIncome = 0;
-        double totalExpense = 0;
+      double totalIncome = 0;
+      double totalExpense = 0;
 
-        for (var summary in event.summaries) {
-          totalIncome += summary.totalIncome;
-          totalExpense += summary.totalExpense;
-        }
+      for (var summary in event.summaries) {
+        totalIncome += summary.totalIncome;
+        totalExpense += summary.totalExpense;
+      }
 
-        final totalProfit = totalIncome - totalExpense;
+      final totalProfit = totalIncome - totalExpense;
 
       emit((state as DashboardLoaded).copyWith(
         allSummaries: event.summaries,
@@ -181,49 +187,54 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     }
   }
 
-  void _onChangeContext(
-    ChangeContext event,
-    Emitter<DashboardState> emit,
-  ) {
-    if (state is DashboardLoaded) {
-      emit((state as DashboardLoaded).copyWith(
-        selectedContext: event.context,
-      ));
-      // Reload data with new context
-      add(LoadDashboardData(context: event.context));
-    }
-  }
-
   Future<void> _onDeleteDailyData(
     DeleteDailyData event,
     Emitter<DashboardState> emit,
   ) async {
+    AppLogger.functionEntry('_onDeleteDailyData',
+        params: {'date': event.date, 'context': event.context});
     if (state is DashboardLoaded) {
       try {
         // Get all income records for the specific date and context
+        AppLogger.databaseOperation('SELECT', 'income',
+            criteria: {'date': event.date, 'context': event.context});
         final incomeRecords = await _supabaseService.fetchIncomeByDate(
           event.date,
           context: event.context,
         );
         if (incomeRecords != null) {
+          AppLogger.databaseOperation('DELETE', 'income',
+              criteria: {'id': incomeRecords.id});
           await _supabaseService.deleteIncome(incomeRecords.id);
+          AppLogger.i('Deleted income record: ${incomeRecords.id}');
         }
 
         // Get all expense records for the specific date and context
+        AppLogger.databaseOperation('SELECT', 'expense',
+            criteria: {'date': event.date, 'context': event.context});
         final expenseRecords = await _supabaseService.fetchExpenseByDate(
           event.date,
           context: event.context,
         );
         if (expenseRecords != null) {
+          AppLogger.databaseOperation('DELETE', 'expense',
+              criteria: {'id': expenseRecords.id});
           await _supabaseService.deleteExpense(expenseRecords.id);
+          AppLogger.i('Deleted expense record: ${expenseRecords.id}');
         }
 
+        AppLogger.i(
+            'Data for ${event.date} (${event.context}) deleted successfully, reloading dashboard');
         // Reload the dashboard data to reflect the deletion
-        add(LoadDashboardData(context: event.context));
-      } catch (e) {
+        add(const LoadDashboardData());
+        AppLogger.functionExit('_onDeleteDailyData', result: 'success');
+      } catch (e, stackTrace) {
+        AppLogger.e('_onDeleteDailyData error: $e', stackTrace: stackTrace);
         // If there's an error, emit error state or just log it and continue
         print('Error deleting daily data: $e');
       }
+    } else {
+      AppLogger.w('_onDeleteDailyData: state is not DashboardLoaded');
     }
   }
 

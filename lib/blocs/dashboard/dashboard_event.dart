@@ -9,42 +9,36 @@ abstract class DashboardEvent extends Equatable {
 }
 
 class LoadDashboardData extends DashboardEvent {
-  final String? context;
-
-  const LoadDashboardData({this.context});
+  const LoadDashboardData();
 
   @override
-  List<Object?> get props => [context];
+  List<Object?> get props => [];
 }
 
 class RefreshDashboardData extends DashboardEvent {
-  final String? context;
-
-  const RefreshDashboardData({this.context});
+  const RefreshDashboardData();
 
   @override
-  List<Object?> get props => [context];
+  List<Object?> get props => [];
 }
 
 class LoadWeeklySummary extends DashboardEvent {
   final DateTime weekStart;
-  final String? context;
 
-  const LoadWeeklySummary(this.weekStart, {this.context});
+  const LoadWeeklySummary(this.weekStart);
 
   @override
-  List<Object?> get props => [weekStart, context];
+  List<Object?> get props => [weekStart];
 }
 
 class LoadMonthlySummary extends DashboardEvent {
   final int year;
   final int month;
-  final String? context;
 
-  const LoadMonthlySummary(this.year, this.month, {this.context});
+  const LoadMonthlySummary(this.year, this.month);
 
   @override
-  List<Object?> get props => [year, month, context];
+  List<Object?> get props => [year, month];
 }
 
 class DailySummaryUpdated extends DashboardEvent {
@@ -54,15 +48,6 @@ class DailySummaryUpdated extends DashboardEvent {
 
   @override
   List<Object?> get props => [summaries];
-}
-
-class ChangeContext extends DashboardEvent {
-  final String context;
-
-  const ChangeContext(this.context);
-
-  @override
-  List<Object?> get props => [context];
 }
 
 class DeleteDailyData extends DashboardEvent {

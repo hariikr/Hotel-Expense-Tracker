@@ -36,6 +36,10 @@ class Formatters {
     return DateFormat(AppConstants.monthYearFormat).format(date);
   }
 
+  static String formatMonth(DateTime date) {
+    return DateFormat('MMMM yyyy').format(date);
+  }
+
   static String formatDayOfWeek(DateTime date) {
     return DateFormat('EEE').format(date);
   }

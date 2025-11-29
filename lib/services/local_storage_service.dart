@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class LocalStorageService {
   static const String _expenseDraftKey = 'expense_draft_';
+  static const String _incomeDraftKey = 'income_draft_';
   static const String _lastSavedDateKey = 'expense_draft_date';
 
   // Save expense draft
@@ -16,6 +17,19 @@ class LocalStorageService {
       await prefs.setString(_lastSavedDateKey, dateKey);
     } catch (e) {
       print('Error saving expense draft: $e');
+    }
+  }
+
+  // Save income draft
+  Future<void> saveIncomeDraft(
+      DateTime date, Map<String, String> values) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dateKey = _getDateKey(date);
+      final jsonString = jsonEncode(values);
+      await prefs.setString('$_incomeDraftKey$dateKey', jsonString);
+    } catch (e) {
+      print('Error saving income draft: $e');
     }
   }
 
@@ -36,6 +50,23 @@ class LocalStorageService {
     return null;
   }
 
+  // Load income draft
+  Future<Map<String, String>?> loadIncomeDraft(DateTime date) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dateKey = _getDateKey(date);
+      final jsonString = prefs.getString('$_incomeDraftKey$dateKey');
+
+      if (jsonString != null && jsonString.isNotEmpty) {
+        final Map<String, dynamic> decoded = jsonDecode(jsonString);
+        return decoded.map((key, value) => MapEntry(key, value.toString()));
+      }
+    } catch (e) {
+      print('Error loading income draft: $e');
+    }
+    return null;
+  }
+
   // Clear expense draft
   Future<void> clearExpenseDraft(DateTime date) async {
     try {
@@ -47,6 +78,17 @@ class LocalStorageService {
     }
   }
 
+  // Clear income draft
+  Future<void> clearIncomeDraft(DateTime date) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dateKey = _getDateKey(date);
+      await prefs.remove('$_incomeDraftKey$dateKey');
+    } catch (e) {
+      print('Error clearing income draft: $e');
+    }
+  }
+
   // Clear all drafts older than 7 days
   Future<void> clearOldDrafts() async {
     try {
@@ -55,8 +97,11 @@ class LocalStorageService {
       final now = DateTime.now();
 
       for (var key in keys) {
-        if (key.startsWith(_expenseDraftKey)) {
-          final dateStr = key.replaceFirst(_expenseDraftKey, '');
+        if (key.startsWith(_expenseDraftKey) ||
+            key.startsWith(_incomeDraftKey)) {
+          final dateStr = key
+              .replaceFirst(_expenseDraftKey, '')
+              .replaceFirst(_incomeDraftKey, '');
           final draftDate = DateTime.tryParse(dateStr);
 
           if (draftDate != null) {
@@ -80,6 +125,18 @@ class LocalStorageService {
       return prefs.containsKey('$_expenseDraftKey$dateKey');
     } catch (e) {
       print('Error checking draft: $e');
+      return false;
+    }
+  }
+
+  // Check if income draft exists
+  Future<bool> hasIncomeDraft(DateTime date) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dateKey = _getDateKey(date);
+      return prefs.containsKey('$_incomeDraftKey$dateKey');
+    } catch (e) {
+      print('Error checking income draft: $e');
       return false;
     }
   }

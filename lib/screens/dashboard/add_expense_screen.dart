@@ -6,9 +6,9 @@ import '../../blocs/expense/expense_event.dart';
 import '../../blocs/expense/expense_state.dart';
 import '../../blocs/dashboard/dashboard_bloc.dart';
 import '../../blocs/dashboard/dashboard_event.dart';
-import '../../blocs/dashboard/dashboard_state.dart';
 import '../../models/expense.dart';
 import '../../services/local_storage_service.dart';
+import '../../services/undo_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/formatters.dart';
 import 'dart:async';
@@ -77,7 +77,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           // Parse the old format text and populate individual fields
           _parseAndSetExpenseText(text);
         }
-        
+
         setState(() {
           _isDraftLoaded = true;
         });
@@ -112,7 +112,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       if (matches.isNotEmpty) {
         final lastMatch = matches.last;
         final amount = double.tryParse(lastMatch.group(0)!) ?? 0.0;
-        final category = line.substring(0, lastMatch.start).trim().toLowerCase();
+        final category =
+            line.substring(0, lastMatch.start).trim().toLowerCase();
 
         // Set the appropriate controller based on category
         switch (category) {
@@ -265,7 +266,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           borderRadius: const BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
       style: const TextStyle(
         fontSize: 16,
@@ -305,16 +307,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       final previousDay = _selectedDate.subtract(const Duration(days: 1));
       final normalizedPreviousDay = Formatters.normalizeDate(previousDay);
 
-      // Get the current context (hotel or house) from dashboard state
-      final dashboardState = context.read<DashboardBloc>().state;
-      final contextType = dashboardState is DashboardLoaded
-          ? dashboardState.selectedContext
-          : 'hotel';
-
       // Load expense using bloc
       context
           .read<ExpenseBloc>()
-          .add(LoadExpenseByDate(normalizedPreviousDay, context: contextType));
+          .add(LoadExpenseByDate(normalizedPreviousDay, context: 'hotel'));
 
       // Wait for the state to update
       await Future.delayed(const Duration(milliseconds: 800));
@@ -465,7 +461,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
-  void _saveExpense() {
+  Future<void> _saveExpense() async {
     // Custom validation: ensure at least one field has a value
     if (_calculateTotal() <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -476,16 +472,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       );
       return;
     }
-    
-    final dashboardState = context.read<DashboardBloc>().state;
-    final contextType = dashboardState is DashboardLoaded
-        ? dashboardState.selectedContext
-        : 'hotel';
 
     final expense = Expense(
       id: widget.existingExpense?.id ?? const Uuid().v4(),
       date: Formatters.normalizeDate(_selectedDate),
-      context: contextType,
+      context: 'hotel',
       fish: double.tryParse(_fishController.text) ?? 0.0,
       meat: double.tryParse(_meatController.text) ?? 0.0,
       chicken: double.tryParse(_chickenController.text) ?? 0.0,
@@ -508,6 +499,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     // Clear draft after saving
     _storageService.clearExpenseDraft(_selectedDate);
+
+    // Save undo entry
+    await UndoService.saveExpenseUndo(expense);
 
     context.read<ExpenseBloc>().add(UpsertExpense(expense));
   }
@@ -669,21 +663,26 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               const SizedBox(height: 8),
                               _buildExpenseField('Meat (₹)', _meatController),
                               const SizedBox(height: 8),
-                              _buildExpenseField('Chicken (₹)', _chickenController),
+                              _buildExpenseField(
+                                  'Chicken (₹)', _chickenController),
                               const SizedBox(height: 8),
                               _buildExpenseField('Milk (₹)', _milkController),
                               const SizedBox(height: 8),
-                              _buildExpenseField('Parotta (₹)', _parottaController),
+                              _buildExpenseField(
+                                  'Parotta (₹)', _parottaController),
                               const SizedBox(height: 8),
-                              _buildExpenseField('Pathiri (₹)', _pathiriController),
+                              _buildExpenseField(
+                                  'Pathiri (₹)', _pathiriController),
                               const SizedBox(height: 8),
                               _buildExpenseField('Dosa (₹)', _dosaController),
                               const SizedBox(height: 8),
                               _buildExpenseField('Appam (₹)', _appamController),
                               const SizedBox(height: 8),
-                              _buildExpenseField('Coconut (₹)', _coconutController),
+                              _buildExpenseField(
+                                  'Coconut (₹)', _coconutController),
                               const SizedBox(height: 8),
-                              _buildExpenseField('Vegetables (₹)', _vegetablesController),
+                              _buildExpenseField(
+                                  'Vegetables (₹)', _vegetablesController),
                               const SizedBox(height: 8),
                               _buildExpenseField('Rice (₹)', _riceController),
                             ],
@@ -691,7 +690,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Labor & Others Section
                       Card(
                         child: Padding(
@@ -708,11 +707,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              _buildExpenseField('Labor Manisha (₹)', _laborManishaController),
+                              _buildExpenseField(
+                                  'Labor Manisha (₹)', _laborManishaController),
                               const SizedBox(height: 8),
-                              _buildExpenseField('Labor Midhun (₹)', _laborMidhunController),
+                              _buildExpenseField(
+                                  'Labor Midhun (₹)', _laborMidhunController),
                               const SizedBox(height: 8),
-                              _buildExpenseField('Others (₹)', _othersController),
+                              _buildExpenseField(
+                                  'Others (₹)', _othersController),
                             ],
                           ),
                         ),
