@@ -204,37 +204,102 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
         return true;
       },
       child: Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
         appBar: AppBar(
-          title: Text(
-              widget.existingIncome != null ? 'Edit Income' : 'Add Income'),
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.profitColor,
+                  AppTheme.profitColor.withOpacity(0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.trending_up, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.existingIncome != null
+                        ? 'Edit Income'
+                        : 'Add Income',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    Formatters.formatDateFull(_selectedDate),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           actions: [
             if (_isAutoSaving)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 8),
-                    Text('Saving...', style: TextStyle(fontSize: 12)),
-                  ],
+                      SizedBox(width: 6),
+                      Text('Saving...',
+                          style: TextStyle(fontSize: 11, color: Colors.white)),
+                    ],
+                  ),
                 ),
               )
             else if (_isDraftLoaded && widget.existingIncome == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.white70, size: 18),
-                    SizedBox(width: 4),
-                    Text('Draft', style: TextStyle(fontSize: 12)),
-                  ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.restore, color: Colors.white, size: 16),
+                      SizedBox(width: 4),
+                      Text('Draft',
+                          style: TextStyle(fontSize: 11, color: Colors.white)),
+                    ],
+                  ),
                 ),
               ),
           ],
@@ -272,243 +337,667 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Date Selector
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.calendar_today,
-                          color: AppTheme.primaryColor),
-                      title: const Text('Date'),
-                      subtitle: Text(Formatters.formatDateFull(_selectedDate)),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: _selectDate,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Online Income
-                  Text(
-                    'Online Income',
-                    style: AppTheme.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'PhonePe, GooglePay, etc.',
-                    style: AppTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Quick Presets for Online Income
-                  QuickAmountPresets(
-                    onAmountSelected: (amount) {
-                      final currentValue =
-                          double.tryParse(_onlineIncomeController.text) ?? 0.0;
-                      final newValue = currentValue + double.parse(amount);
-                      _onlineIncomeController.text =
-                          newValue.toStringAsFixed(0);
-                    },
-                    color: AppTheme.profitColor,
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: _onlineIncomeController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      prefixText: '₹ ',
-                      hintText: '0.00',
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          VoiceInputButton(
-                            onResult: (value) {
-                              _onlineIncomeController.text = value;
-                            },
-                            color: AppTheme.profitColor,
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.phone_android),
+                  // Date Selector Card - Modern Design
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.profitColor.withOpacity(0.1),
+                          AppTheme.profitColor.withOpacity(0.05),
                         ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.profitColor.withOpacity(0.3),
+                        width: 1,
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return null; // Optional field
-                      }
-                      final parsed = double.tryParse(value);
-                      if (parsed == null) {
-                        return 'Please enter a valid number';
-                      }
-                      if (parsed < 0) {
-                        return 'Value cannot be negative';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Offline Income
-                  Text(
-                    'Offline Income',
-                    style: AppTheme.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Cash, Flutter Enhance, etc.',
-                    style: AppTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Quick Presets for Offline Income
-                  QuickAmountPresets(
-                    onAmountSelected: (amount) {
-                      final currentValue =
-                          double.tryParse(_offlineIncomeController.text) ?? 0.0;
-                      final newValue = currentValue + double.parse(amount);
-                      _offlineIncomeController.text =
-                          newValue.toStringAsFixed(0);
-                    },
-                    color: AppTheme.profitColor,
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: _offlineIncomeController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      prefixText: '₹ ',
-                      hintText: '0.00',
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          VoiceInputButton(
-                            onResult: (value) {
-                              _offlineIncomeController.text = value;
-                            },
-                            color: AppTheme.profitColor,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _selectDate,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.profitColor.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.calendar_today_rounded,
+                                  color: AppTheme.profitColor,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Income Date',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      Formatters.formatDateFull(_selectedDate),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 16,
+                                  color: AppTheme.profitColor,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.money),
-                        ],
+                        ),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return null; // Optional field
-                      }
-                      final parsed = double.tryParse(value);
-                      if (parsed == null) {
-                        return 'Please enter a valid number';
-                      }
-                      if (parsed < 0) {
-                        return 'Value cannot be negative';
-                      }
-                      return null;
-                    },
                   ),
                   const SizedBox(height: 24),
 
-                  // Meals Count
-                  Text(
-                    'Meals Count',
-                    style: AppTheme.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
+                  // Online Income Section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Number of meals served today',
-                    style: AppTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _mealsCountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      hintText: '0',
-                      suffixIcon: Icon(Icons.restaurant_menu),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return null; // Optional field
-                      }
-                      final parsed = int.tryParse(value);
-                      if (parsed == null) {
-                        return 'Please enter a valid number';
-                      }
-                      if (parsed < 0) {
-                        return 'Value cannot be negative';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Total Preview
-                  Card(
-                    color: AppTheme.profitColor.withOpacity(0.1),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Total Income',
-                            style: AppTheme.headingSmall.copyWith(
-                              color: AppTheme.profitColor,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppTheme.profitColor.withOpacity(0.2),
+                                      AppTheme.profitColor.withOpacity(0.1),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.phone_android_rounded,
+                                  color: AppTheme.profitColor,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'ONLINE INCOME',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.black87,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'PhonePe, GooglePay, etc.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            Formatters.formatCurrency(
-                              (double.tryParse(_onlineIncomeController.text) ??
-                                      0.0) +
-                                  (double.tryParse(
-                                          _offlineIncomeController.text) ??
-                                      0.0),
+                          const SizedBox(height: 16),
+
+                          // Quick Presets for Online Income
+                          QuickAmountPresets(
+                            onAmountSelected: (amount) {
+                              final currentValue = double.tryParse(
+                                      _onlineIncomeController.text) ??
+                                  0.0;
+                              final newValue =
+                                  currentValue + double.parse(amount);
+                              _onlineIncomeController.text =
+                                  newValue.toStringAsFixed(0);
+                            },
+                            color: AppTheme.profitColor,
+                          ),
+                          const SizedBox(height: 16),
+
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppTheme.profitColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppTheme.profitColor.withOpacity(0.3),
+                                width: 2,
+                              ),
                             ),
-                            style: AppTheme.headingMedium.copyWith(
-                              color: AppTheme.profitColor,
+                            child: TextFormField(
+                              controller: _onlineIncomeController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.profitColor,
+                              ),
+                              decoration: InputDecoration(
+                                prefixText: '₹ ',
+                                prefixStyle: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.profitColor,
+                                ),
+                                hintText: '0.00',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.profitColor.withOpacity(0.3),
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 16),
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    VoiceInputButton(
+                                      onResult: (value) {
+                                        _onlineIncomeController.text = value;
+                                      },
+                                      color: AppTheme.profitColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return null; // Optional field
+                                }
+                                final parsed = double.tryParse(value);
+                                if (parsed == null) {
+                                  return 'Please enter a valid number';
+                                }
+                                if (parsed < 0) {
+                                  return 'Value cannot be negative';
+                                }
+                                return null;
+                              },
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
 
-                  // Save Button
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _saveIncome,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: AppTheme.profitColor,
-                      foregroundColor: Colors.white,
+                  // Offline Income Section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppTheme.profitColor.withOpacity(0.2),
+                                      AppTheme.profitColor.withOpacity(0.1),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.payments_rounded,
+                                  color: AppTheme.profitColor,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'OFFLINE INCOME',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.black87,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Cash, Flutter Enhance, etc.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Quick Presets for Offline Income
+                          QuickAmountPresets(
+                            onAmountSelected: (amount) {
+                              final currentValue = double.tryParse(
+                                      _offlineIncomeController.text) ??
+                                  0.0;
+                              final newValue =
+                                  currentValue + double.parse(amount);
+                              _offlineIncomeController.text =
+                                  newValue.toStringAsFixed(0);
+                            },
+                            color: AppTheme.profitColor,
+                          ),
+                          const SizedBox(height: 16),
+
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppTheme.profitColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppTheme.profitColor.withOpacity(0.3),
+                                width: 2,
+                              ),
                             ),
-                          )
-                        : Text(
-                            widget.existingIncome != null
-                                ? 'Update Income'
-                                : 'Save Income',
-                            style: AppTheme.bodyLarge.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                            child: TextFormField(
+                              controller: _offlineIncomeController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.profitColor,
+                              ),
+                              decoration: InputDecoration(
+                                prefixText: '₹ ',
+                                prefixStyle: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.profitColor,
+                                ),
+                                hintText: '0.00',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.profitColor.withOpacity(0.3),
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 16),
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    VoiceInputButton(
+                                      onResult: (value) {
+                                        _offlineIncomeController.text = value;
+                                      },
+                                      color: AppTheme.profitColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return null; // Optional field
+                                }
+                                final parsed = double.tryParse(value);
+                                if (parsed == null) {
+                                  return 'Please enter a valid number';
+                                }
+                                if (parsed < 0) {
+                                  return 'Value cannot be negative';
+                                }
+                                return null;
+                              },
                             ),
                           ),
+                        ],
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 20),
+
+                  // Meals Count Section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppTheme.profitColor.withOpacity(0.2),
+                                      AppTheme.profitColor.withOpacity(0.1),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.restaurant_menu_rounded,
+                                  color: AppTheme.profitColor,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'MEALS COUNT',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.black87,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Number of meals served today',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppTheme.profitColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppTheme.profitColor.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            child: TextFormField(
+                              controller: _mealsCountController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.profitColor,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: '0',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.profitColor.withOpacity(0.3),
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 16),
+                                suffixIcon: const Icon(
+                                  Icons.people_alt_rounded,
+                                  color: AppTheme.profitColor,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return null; // Optional field
+                                }
+                                final parsed = int.tryParse(value);
+                                if (parsed == null) {
+                                  return 'Please enter a valid number';
+                                }
+                                if (parsed < 0) {
+                                  return 'Value cannot be negative';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Total Preview - Modern Card
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.profitColor,
+                          AppTheme.profitColor.withOpacity(0.8),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.profitColor.withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.account_balance_wallet_rounded,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Total Income',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  Formatters.formatCurrency(
+                                    (double.tryParse(
+                                                _onlineIncomeController.text) ??
+                                            0.0) +
+                                        (double.tryParse(
+                                                _offlineIncomeController
+                                                    .text) ??
+                                            0.0),
+                                  ),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.trending_up_rounded,
+                            color: Colors.white70,
+                            size: 32,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 120), // Space for bottom button
                 ],
+              ),
+            ),
+          ),
+        ),
+        // Bottom Navigation Bar with Save Button
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _isLoading
+                        ? [Colors.grey.shade400, Colors.grey.shade500]
+                        : [
+                            AppTheme.profitColor,
+                            AppTheme.profitColor.withOpacity(0.8),
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: _isLoading
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: AppTheme.profitColor.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _isLoading ? null : _saveIncome,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Center(
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.save_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  widget.existingIncome != null
+                                      ? 'Update Income'
+                                      : 'Save Income',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

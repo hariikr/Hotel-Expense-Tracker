@@ -4,7 +4,8 @@ enum AppLanguage { english, malayalam }
 
 class LanguageService {
   static const String _languageKey = 'app_language';
-  static AppLanguage _currentLanguage = AppLanguage.english;
+  static AppLanguage _currentLanguage =
+      AppLanguage.malayalam; // Default to Malayalam
 
   static AppLanguage get currentLanguage => _currentLanguage;
 
@@ -13,10 +14,11 @@ class LanguageService {
     final prefs = await SharedPreferences.getInstance();
     final languageCode = prefs.getString(_languageKey);
 
-    if (languageCode == 'ml') {
-      _currentLanguage = AppLanguage.malayalam;
-    } else {
+    if (languageCode == 'en') {
       _currentLanguage = AppLanguage.english;
+    } else {
+      // Default to Malayalam
+      _currentLanguage = AppLanguage.malayalam;
     }
   }
 

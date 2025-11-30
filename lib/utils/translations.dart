@@ -16,6 +16,16 @@ class AppTranslations {
     'ml': 'വിശകലനം',
   };
 
+  static const Map<String, String> aiAssistant = {
+    'en': 'AI Assistant',
+    'ml': 'AI സഹായി',
+  };
+
+  static const Map<String, String> ai = {
+    'en': 'AI',
+    'ml': 'AI',
+  };
+
   // Quick Actions
   static const Map<String, String> quickActions = {
     'en': 'Quick Actions',

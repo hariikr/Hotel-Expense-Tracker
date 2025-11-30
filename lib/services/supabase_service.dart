@@ -3,8 +3,9 @@ import '../models/income.dart';
 import '../models/expense.dart';
 import '../models/daily_summary.dart';
 import '../utils/app_logger.dart';
+import 'data_service.dart';
 
-class SupabaseService {
+class SupabaseService implements DataService {
   final SupabaseClient _client;
 
   SupabaseService(this._client);

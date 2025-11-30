@@ -1,16 +1,21 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/data_service.dart';
 import '../../services/supabase_service.dart';
 import 'dashboard_event.dart';
 import 'dashboard_state.dart';
 import '../../utils/app_logger.dart';
 
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
-  final SupabaseService _supabaseService;
+  final DataService _dataService;
+  final SupabaseService? _supabaseService;
   RealtimeChannel? _summarySubscription;
 
-  DashboardBloc(this._supabaseService) : super(const DashboardInitial()) {
+  DashboardBloc(this._dataService)
+      : _supabaseService =
+            _dataService is SupabaseService ? _dataService : null,
+        super(const DashboardInitial()) {
     on<LoadDashboardData>(_onLoadDashboardData);
     on<RefreshDashboardData>(_onRefreshDashboardData);
     on<LoadWeeklySummary>(_onLoadWeeklySummary);
@@ -22,11 +27,14 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   }
 
   void _subscribeToRealtime() {
-    _summarySubscription = _supabaseService.subscribeToDailySummary(
-      (payload) {
-        add(const RefreshDashboardData());
-      },
-    );
+    // Only subscribe if we have a SupabaseService (online mode)
+    if (_supabaseService != null) {
+      _summarySubscription = _supabaseService!.subscribeToDailySummary(
+        (payload) {
+          add(const RefreshDashboardData());
+        },
+      );
+    }
   }
 
   Future<void> _onLoadDashboardData(
@@ -39,8 +47,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       AppLogger.databaseOperation('SELECT', 'daily_summaries',
           criteria: {'context': 'hotel'});
       final summaries =
-          await _supabaseService.fetchAllDailySummaries(context: 'hotel');
-      final bestProfit = _supabaseService.getBestProfitDay(summaries);
+          await _dataService.fetchAllDailySummaries(context: 'hotel');
+      final bestProfit = _dataService.getBestProfitDay(summaries);
 
       double totalIncome = 0;
       double totalExpense = 0;
@@ -75,8 +83,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         AppLogger.databaseOperation('SELECT', 'daily_summaries',
             criteria: {'context': 'hotel'});
         final summaries =
-            await _supabaseService.fetchAllDailySummaries(context: 'hotel');
-        final bestProfit = _supabaseService.getBestProfitDay(summaries);
+            await _dataService.fetchAllDailySummaries(context: 'hotel');
+        final bestProfit = _dataService.getBestProfitDay(summaries);
 
         double totalIncome = 0;
         double totalExpense = 0;
@@ -115,7 +123,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       try {
         AppLogger.databaseOperation('SELECT', 'weekly_summary',
             criteria: {'week_start': event.weekStart, 'context': 'hotel'});
-        final weeklySummary = await _supabaseService
+        final weeklySummary = await _dataService
             .fetchWeeklySummary(event.weekStart, context: 'hotel');
         emit((state as DashboardLoaded).copyWith(
           weeklySummary: weeklySummary,
@@ -144,7 +152,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           'month': event.month,
           'context': 'hotel'
         });
-        final monthlySummary = await _supabaseService
+        final monthlySummary = await _dataService
             .fetchMonthlySummary(event.year, event.month, context: 'hotel');
         emit((state as DashboardLoaded).copyWith(
           monthlySummary: monthlySummary,
@@ -165,7 +173,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     Emitter<DashboardState> emit,
   ) async {
     if (state is DashboardLoaded) {
-      final bestProfit = _supabaseService.getBestProfitDay(event.summaries);
+      final bestProfit = _dataService.getBestProfitDay(event.summaries);
 
       double totalIncome = 0;
       double totalExpense = 0;
@@ -198,28 +206,28 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         // Get all income records for the specific date and context
         AppLogger.databaseOperation('SELECT', 'income',
             criteria: {'date': event.date, 'context': event.context});
-        final incomeRecords = await _supabaseService.fetchIncomeByDate(
+        final incomeRecords = await _dataService.fetchIncomeByDate(
           event.date,
           context: event.context,
         );
         if (incomeRecords != null) {
           AppLogger.databaseOperation('DELETE', 'income',
               criteria: {'id': incomeRecords.id});
-          await _supabaseService.deleteIncome(incomeRecords.id);
+          await _dataService.deleteIncome(incomeRecords.id);
           AppLogger.i('Deleted income record: ${incomeRecords.id}');
         }
 
         // Get all expense records for the specific date and context
         AppLogger.databaseOperation('SELECT', 'expense',
             criteria: {'date': event.date, 'context': event.context});
-        final expenseRecords = await _supabaseService.fetchExpenseByDate(
+        final expenseRecords = await _dataService.fetchExpenseByDate(
           event.date,
           context: event.context,
         );
         if (expenseRecords != null) {
           AppLogger.databaseOperation('DELETE', 'expense',
               criteria: {'id': expenseRecords.id});
-          await _supabaseService.deleteExpense(expenseRecords.id);
+          await _dataService.deleteExpense(expenseRecords.id);
           AppLogger.i('Deleted expense record: ${expenseRecords.id}');
         }
 
@@ -240,8 +248,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
   @override
   Future<void> close() {
-    if (_summarySubscription != null) {
-      _supabaseService.unsubscribe(_summarySubscription!);
+    if (_summarySubscription != null && _supabaseService != null) {
+      _supabaseService!.unsubscribe(_summarySubscription!);
     }
     return super.close();
   }

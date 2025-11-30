@@ -1,15 +1,20 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/data_service.dart';
 import '../../services/supabase_service.dart';
 import 'expense_event.dart';
 import 'expense_state.dart';
 
 class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
-  final SupabaseService _supabaseService;
+  final DataService _dataService;
+  final SupabaseService? _supabaseService;
   RealtimeChannel? _expenseSubscription;
 
-  ExpenseBloc(this._supabaseService) : super(const ExpenseInitial()) {
+  ExpenseBloc(this._dataService)
+      : _supabaseService =
+            _dataService is SupabaseService ? _dataService : null,
+        super(const ExpenseInitial()) {
     on<LoadAllExpense>(_onLoadAllExpense);
     on<LoadExpenseByDate>(_onLoadExpenseByDate);
     on<UpsertExpense>(_onUpsertExpense);
@@ -20,11 +25,13 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
   }
 
   void _subscribeToRealtime() {
-    _expenseSubscription = _supabaseService.subscribeToExpense(
-      (payload) {
-        add(const LoadAllExpense());
-      },
-    );
+    if (_supabaseService != null) {
+      _expenseSubscription = _supabaseService!.subscribeToExpense(
+        (payload) {
+          add(const LoadAllExpense());
+        },
+      );
+    }
   }
 
   Future<void> _onLoadAllExpense(
@@ -33,7 +40,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
   ) async {
     emit(const ExpenseLoading());
     try {
-      final expenses = await _supabaseService.fetchAllExpense();
+      final expenses = await _dataService.fetchAllExpense();
       emit(ExpenseLoaded(expenses: expenses));
     } catch (e) {
       emit(ExpenseError(e.toString()));
@@ -45,7 +52,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     Emitter<ExpenseState> emit,
   ) async {
     try {
-      final expense = await _supabaseService.fetchExpenseByDate(event.date,
+      final expense = await _dataService.fetchExpenseByDate(event.date,
           context: event.context);
       if (state is ExpenseLoaded) {
         emit((state as ExpenseLoaded).copyWith(selectedExpense: expense));
@@ -65,7 +72,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     Emitter<ExpenseState> emit,
   ) async {
     try {
-      await _supabaseService.upsertExpense(event.expense);
+      await _dataService.upsertExpense(event.expense);
       emit(const ExpenseOperationSuccess('Expense saved successfully'));
       add(const LoadAllExpense());
     } catch (e) {
@@ -78,7 +85,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     Emitter<ExpenseState> emit,
   ) async {
     try {
-      await _supabaseService.deleteExpense(event.id);
+      await _dataService.deleteExpense(event.id);
       emit(const ExpenseOperationSuccess('Expense deleted successfully'));
       add(const LoadAllExpense());
     } catch (e) {
@@ -99,8 +106,8 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
 
   @override
   Future<void> close() {
-    if (_expenseSubscription != null) {
-      _supabaseService.unsubscribe(_expenseSubscription!);
+    if (_expenseSubscription != null && _supabaseService != null) {
+      _supabaseService!.unsubscribe(_expenseSubscription!);
     }
     return super.close();
   }

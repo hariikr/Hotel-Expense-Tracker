@@ -12,9 +12,10 @@ import '../../utils/formatters.dart';
 import '../../utils/translations.dart';
 import '../../services/language_service.dart';
 import '../../widgets/calculator_widget.dart';
-import '../../widgets/smart_insights_widget.dart';
+import '../../services/smart_insights_service.dart'; // AI insights service
 import '../widgets/best_profit_card.dart';
 import '../../services/notification_service.dart';
+import '../../services/notification_settings_service.dart';
 import '../../services/share_service.dart';
 import '../../services/undo_service.dart';
 import 'add_income_screen.dart';
@@ -31,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isNotificationEnabled = false;
   bool _hasUndo = false;
   String _undoMessage = '';
+  String _insightsPeriod = 'week'; // AI insights period selector
 
   String get _lang => LanguageService.getLanguageCode();
 
@@ -45,9 +47,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _initializeServices() async {
     final notificationService = NotificationService();
     await notificationService.initialize();
-    final enabled = await notificationService.isDailyReminderEnabled();
+    await notificationService.requestPermissions();
+
+    // Check if daily reminder is enabled from settings
+    final settingsService = NotificationSettingsService();
+    final enabled = await settingsService.isDailyReminderEnabled();
+
     if (mounted) {
       setState(() => _isNotificationEnabled = enabled);
+    }
+
+    // If enabled, make sure the notification is scheduled
+    if (enabled) {
+      await notificationService.scheduleDailyReminder();
     }
   }
 
@@ -64,10 +76,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _toggleNotifications(bool value) async {
     final notificationService = NotificationService();
+    final settingsService = NotificationSettingsService();
+
+    // Save the setting first
+    await settingsService.setDailyReminderEnabled(value);
+
     if (value) {
       await notificationService.scheduleDailyReminder();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppTranslations.get(
+              {
+                'en': 'Daily reminder enabled at 9 PM',
+                'ml': 'രാത്രി 9 മണിക്ക് ഡെയ്‌ലി റിമൈൻഡർ സജ്ജമാക്കി'
+              },
+              _lang,
+            )),
+            backgroundColor: AppTheme.profitColor,
+          ),
+        );
+      }
     } else {
       await notificationService.cancelDailyReminder();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppTranslations.get(
+              {
+                'en': 'Daily reminder disabled',
+                'ml': 'ഡെയ്‌ലി റിമൈൻഡർ നിർജ്ജീവമാക്കി'
+              },
+              _lang,
+            )),
+          ),
+        );
+      }
     }
     setState(() => _isNotificationEnabled = value);
   }
@@ -129,6 +173,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await ShareService.shareDailySummary(
       date: DateTime.now(),
     );
+  }
+
+  Future<void> _testNotification() async {
+    final notificationService = NotificationService();
+    await notificationService.showInstantNotification(
+      title: '🔔 Test Notification',
+      body:
+          'Notifications are working! You will receive daily reminders at 9 PM.',
+      payload: 'test',
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppTranslations.get(
+            {
+              'en': 'Test notification sent!',
+              'ml': 'ടെസ്റ്റ് നോട്ടിഫിക്കേഷൻ അയച്ചു!'
+            },
+            _lang,
+          )),
+          backgroundColor: AppTheme.primaryColor,
+        ),
+      );
+    }
   }
 
   @override
@@ -197,7 +266,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             tooltip: 'Share Today\'s Summary',
           ),
           // Notification Toggle
-          IconButton(
+          PopupMenuButton<String>(
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -211,10 +280,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 size: 20,
               ),
             ),
-            onPressed: () => _toggleNotifications(!_isNotificationEnabled),
-            tooltip: _isNotificationEnabled
-                ? 'Disable Daily Reminder'
-                : 'Enable Daily Reminder (9 PM)',
+            tooltip: 'Notification Settings',
+            onSelected: (value) async {
+              if (value == 'toggle') {
+                await _toggleNotifications(!_isNotificationEnabled);
+              } else if (value == 'test') {
+                await _testNotification();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'toggle',
+                child: Row(
+                  children: [
+                    Icon(
+                      _isNotificationEnabled
+                          ? Icons.notifications_off
+                          : Icons.notifications_active,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(_isNotificationEnabled
+                        ? 'Disable Daily Reminder'
+                        : 'Enable Daily Reminder (9 PM)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'test',
+                child: Row(
+                  children: [
+                    Icon(Icons.bug_report),
+                    SizedBox(width: 8),
+                    Text('Test Notification'),
+                  ],
+                ),
+              ),
+            ],
           ),
           // Refresh Button
           IconButton(
@@ -319,22 +420,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Quick Actions - Moved to Top
+                          // Quick Actions - Top Priority
                           _buildSectionHeader('Quick Actions', Icons.flash_on),
                           const SizedBox(height: 12),
                           _buildQuickActions(context),
                           const SizedBox(height: 24),
 
-                          // Smart Insights
-                          if (state.allSummaries.isNotEmpty) ...[
-                            _buildSectionHeader(
-                                'Smart Insights', Icons.lightbulb_outline),
-                            const SizedBox(height: 12),
-                            _buildSmartInsights(state),
-                            const SizedBox(height: 24),
-                          ],
-
-                          // Best Profit Day
+                          // Best Profit Day - Second Priority
                           if (state.bestProfitDay != null) ...[
                             _buildSectionHeader(
                                 'Best Performance', Icons.emoji_events),
@@ -343,7 +435,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             const SizedBox(height: 24),
                           ],
 
-                          const SizedBox(height: 16),
+                          // AI Smart Insights - Third Priority
+                          if (state.allSummaries.isNotEmpty) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildSectionHeader(
+                                    'AI Smart Insights', Icons.psychology),
+                                // Period Selector - Compact
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        const Color(0xFF667EEA)
+                                            .withOpacity(0.15),
+                                        const Color(0xFF764BA2)
+                                            .withOpacity(0.15),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: const Color(0xFF667EEA)
+                                          .withOpacity(0.3),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _insightsPeriod,
+                                      isDense: true,
+                                      icon: const Icon(Icons.arrow_drop_down,
+                                          color: Color(0xFF667EEA), size: 18),
+                                      style: const TextStyle(
+                                        color: Color(0xFF667EEA),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(
+                                            value: 'today',
+                                            child: Text('Today')),
+                                        DropdownMenuItem(
+                                            value: 'week', child: Text('Week')),
+                                        DropdownMenuItem(
+                                            value: 'month',
+                                            child: Text('Month')),
+                                      ],
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(
+                                              () => _insightsPeriod = value);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _buildAiSmartInsights(),
+                            const SizedBox(height: 24),
+                          ],
+
+                          const SizedBox(height: 80), // Space for FAB
                         ],
                       ),
                     ),
@@ -360,110 +516,453 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Undo Button (if available)
           if (_hasUndo) ...[
-            FloatingActionButton.extended(
-              onPressed: _handleUndo,
-              backgroundColor: Colors.orange,
-              icon: const Icon(Icons.undo, color: Colors.white),
-              label: Text(
-                AppTranslations.get(
-                  {'en': 'Undo Last Entry', 'ml': 'അവസാന എൻട്രി പഴയപടിയാക്കുക'},
-                  _lang,
-                ),
-                style: const TextStyle(color: Colors.white),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.orange.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-              heroTag: 'undo',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _handleUndo,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Colors.orange,
+                          Colors.deepOrange,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.undo_rounded,
+                            color: Colors.white, size: 22),
+                        const SizedBox(width: 10),
+                        Text(
+                          AppTranslations.get(
+                            {'en': 'Undo', 'ml': 'പഴയപടിയാക്കുക'},
+                            _lang,
+                          ),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
           ],
           // Calculator Button
-          FloatingActionButton(
-            onPressed: () async {
-              await showDialog(
-                context: context,
-                builder: (context) => const CalculatorDialog(),
-              );
-            },
-            backgroundColor: AppTheme.primaryColor,
-            child: const Icon(Icons.calculate, color: Colors.white),
-            tooltip: AppTranslations.get(
-              {'en': 'Calculator', 'ml': 'കാൽക്കുലേറ്റർ'},
-              _lang,
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-            heroTag: 'calculator',
+            child: FloatingActionButton(
+              onPressed: () async {
+                await showDialog(
+                  context: context,
+                  builder: (context) => const CalculatorDialog(),
+                );
+              },
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.calculate_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              tooltip: AppTranslations.get(
+                {'en': 'Calculator', 'ml': 'കാൽക്കുലേറ്റർ'},
+                _lang,
+              ),
+              heroTag: 'calculator',
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSmartInsights(DashboardLoaded state) {
-    if (state.allSummaries.length < 2) {
-      return const SizedBox.shrink();
+  // AI-powered Smart Insights Widget
+  Widget _buildAiSmartInsights() {
+    final insightsService = SmartInsightsService();
+
+    return FutureBuilder<SmartInsightsResponse>(
+      future: insightsService.getSmartInsights(period: _insightsPeriod),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFF667EEA)),
+                    SizedBox(height: 16),
+                    Text(
+                      'Generating AI insights...',
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.insights.isEmpty) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.insights_outlined,
+                      size: 48,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No Insights Available',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    snapshot.data?.error ?? 'Not enough data for this period',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final response = snapshot.data!;
+
+        return Column(
+          children: [
+            // Summary Card (if available)
+            if (response.summary != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF667EEA).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.summarize_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _insightsPeriod == 'today'
+                                ? 'Today\'s Summary'
+                                : _insightsPeriod == 'week'
+                                    ? 'Weekly Summary'
+                                    : 'Monthly Summary',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSummaryItem(
+                              'Profit',
+                              '₹${response.summary!.profit.toStringAsFixed(0)}',
+                              Icons.trending_up_rounded,
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildSummaryItem(
+                              'Margin',
+                              '${response.summary!.profitMargin.toStringAsFixed(1)}%',
+                              Icons.percent_rounded,
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildSummaryItem(
+                              'Days',
+                              '${response.summary!.profitableDays}/${response.summary!.totalDays}',
+                              Icons.calendar_today_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Insights List
+            ...response.insights.map((insight) => _buildInsightCard(insight)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white70, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 11),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInsightCard(SmartInsight insight) {
+    final color = _getInsightColor(insight.type);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon with gradient background
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    color.withOpacity(0.15),
+                    color.withOpacity(0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: color.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  insight.icon,
+                  style: const TextStyle(fontSize: 26),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          insight.type.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    insight.title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    insight.message,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getInsightColor(String type) {
+    switch (type) {
+      case 'profit':
+        return Colors.green;
+      case 'expense':
+        return Colors.orange;
+      case 'income':
+        return Colors.blue;
+      case 'trend':
+        return Colors.purple;
+      case 'warning':
+        return Colors.red;
+      case 'suggestion':
+        return Colors.teal;
+      default:
+        return Colors.grey;
     }
-
-    final today = DateTime.now();
-    final todaySummary = state.allSummaries.firstWhere(
-      (s) =>
-          s.date.year == today.year &&
-          s.date.month == today.month &&
-          s.date.day == today.day,
-      orElse: () => state.allSummaries.first,
-    );
-
-    final yesterday = today.subtract(const Duration(days: 1));
-    final yesterdaySummary = state.allSummaries.firstWhere(
-      (s) =>
-          s.date.year == yesterday.year &&
-          s.date.month == yesterday.month &&
-          s.date.day == yesterday.day,
-      orElse: () => state.allSummaries.length > 1
-          ? state.allSummaries[1]
-          : state.allSummaries.first,
-    );
-
-    // Calculate weekly and monthly average
-    final now = DateTime.now();
-    final weekAgo = now.subtract(const Duration(days: 7));
-    final monthAgo = now.subtract(const Duration(days: 30));
-
-    final weekSummaries =
-        state.allSummaries.where((s) => s.date.isAfter(weekAgo)).toList();
-    final monthSummaries =
-        state.allSummaries.where((s) => s.date.isAfter(monthAgo)).toList();
-
-    final weeklyAvg = weekSummaries.isEmpty
-        ? 0.0
-        : weekSummaries.map((s) => s.profit).reduce((a, b) => a + b) /
-            weekSummaries.length;
-    final monthlyAvg = monthSummaries.isEmpty
-        ? 0.0
-        : monthSummaries.map((s) => s.profit).reduce((a, b) => a + b) /
-            monthSummaries.length;
-
-    // Find consecutive profit days
-    int consecutiveProfitDays = 0;
-    for (final summary in state.allSummaries.reversed) {
-      if (summary.profit > 0) {
-        consecutiveProfitDays++;
-      } else {
-        break;
-      }
-    }
-
-    return SmartInsightsWidget(
-      todayIncome: todaySummary.totalIncome,
-      todayExpense: todaySummary.totalExpense,
-      yesterdayIncome: yesterdaySummary.totalIncome,
-      yesterdayExpense: yesterdaySummary.totalExpense,
-      weeklyAvgProfit: weeklyAvg,
-      monthlyAvgProfit: monthlyAvg,
-      topExpenseCategory: '', // TODO: Calculate from expense data
-      topExpenseAmount: 0.0,
-      consecutiveProfitDays: consecutiveProfitDays,
-    );
   }
 
   Widget _buildSectionHeader(String title, IconData icon) {

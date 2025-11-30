@@ -246,38 +246,235 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   /// Helper method to build individual expense fields
   Widget _buildExpenseField(String label, TextEditingController controller) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(
+    final hasValue = controller.text.isNotEmpty &&
+        double.tryParse(controller.text) != null &&
+        double.parse(controller.text) > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: hasValue ? AppTheme.lossColor.withOpacity(0.05) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: hasValue
+              ? AppTheme.lossColor.withOpacity(0.3)
+              : Colors.grey.shade300,
+          width: hasValue ? 2 : 1,
+        ),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: hasValue ? AppTheme.lossColor : Colors.black54,
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          suffixIcon: hasValue
+              ? Icon(Icons.check_circle,
+                  color: AppTheme.lossColor.withOpacity(0.7), size: 20)
+              : null,
+        ),
+        style: TextStyle(
+          fontSize: 16,
           fontWeight: FontWeight.w600,
-          fontSize: 14,
+          color: hasValue ? AppTheme.lossColor : Colors.black87,
         ),
-        border: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-        ),
-        enabledBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: Colors.grey),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        onChanged: (value) {
+          setState(() {});
+          // Auto-save draft after user stops typing
+          _autoSaveDraft();
+        },
       ),
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
+    );
+  }
+
+  Widget _buildQuickActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.8),
+                color,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      onChanged: (value) {
-        setState(() {});
-        // Auto-save draft after user stops typing
-        _autoSaveDraft();
-      },
+    );
+  }
+
+  void _showTemplateMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Choose Template',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildTemplateOption(
+              context,
+              title: 'Weekend Template',
+              subtitle: 'Higher expenses for busy weekends',
+              icon: Icons.weekend_rounded,
+              color: const Color(0xFFFF6B6B),
+              onTap: () {
+                _applyTemplate('weekend');
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildTemplateOption(
+              context,
+              title: 'Weekday Template',
+              subtitle: 'Standard expenses for regular days',
+              icon: Icons.today_rounded,
+              color: const Color(0xFF4ECDC4),
+              onTap: () {
+                _applyTemplate('weekday');
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildTemplateOption(
+              context,
+              title: 'Minimal Template',
+              subtitle: 'Basic expenses only',
+              icon: Icons.minimize_rounded,
+              color: const Color(0xFF95E1D3),
+              onTap: () {
+                _applyTemplate('minimal');
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTemplateOption(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: color),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -520,37 +717,107 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         return true;
       },
       child: Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
         appBar: AppBar(
-          title: Text(
-              widget.existingExpense != null ? 'Edit Expense' : 'Add Expense'),
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.lossColor,
+                  AppTheme.lossColor.withOpacity(0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.trending_down, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.existingExpense != null
+                        ? 'Edit Expense'
+                        : 'Add Expense',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    Formatters.formatDateFull(_selectedDate),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           actions: [
             if (_isAutoSaving)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        children: [
+                          SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Text('Saving...',
+                              style:
+                                  TextStyle(fontSize: 11, color: Colors.white)),
+                        ],
                       ),
                     ),
-                    SizedBox(width: 8),
-                    Text('Saving...', style: TextStyle(fontSize: 12)),
                   ],
                 ),
               )
             else if (_isDraftLoaded && widget.existingExpense == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.white70, size: 18),
-                    SizedBox(width: 4),
-                    Text('Draft', style: TextStyle(fontSize: 12)),
-                  ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.restore, color: Colors.white, size: 16),
+                      SizedBox(width: 4),
+                      Text('Draft',
+                          style: TextStyle(fontSize: 11, color: Colors.white)),
+                    ],
+                  ),
                 ),
               ),
           ],
@@ -588,137 +855,269 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Date Selector
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.calendar_today,
-                          color: AppTheme.primaryColor),
-                      title: const Text('Date'),
-                      subtitle: Text(Formatters.formatDateFull(_selectedDate)),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: _selectDate,
+                  // Date Selector Card - Modern Design
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.lossColor.withOpacity(0.1),
+                          AppTheme.lossColor.withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.lossColor.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _selectDate,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.lossColor.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.calendar_today_rounded,
+                                  color: AppTheme.lossColor,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Expense Date',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      Formatters.formatDateFull(_selectedDate),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 16,
+                                  color: AppTheme.lossColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // Quick Actions
                   if (widget.existingExpense == null) ...[
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
+                          child: _buildQuickActionButton(
+                            icon: Icons.content_copy_rounded,
+                            label: 'Copy Yesterday',
                             onPressed: _copyFromPreviousDay,
-                            icon: const Icon(Icons.content_copy, size: 18),
-                            label: const Text('Copy Yesterday'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.primaryColor,
-                            ),
+                            color: const Color(0xFF667EEA),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        PopupMenuButton<String>(
-                          onSelected: _applyTemplate,
-                          icon: const Icon(Icons.app_registration),
-                          tooltip: 'Apply Template',
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'weekend',
-                              child: Text('Weekend Template'),
-                            ),
-                            const PopupMenuItem(
-                              value: 'weekday',
-                              child: Text('Weekday Template'),
-                            ),
-                            const PopupMenuItem(
-                              value: 'minimal',
-                              child: Text('Minimal Template'),
-                            ),
-                          ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickActionButton(
+                            icon: Icons.library_books_rounded,
+                            label: 'Templates',
+                            onPressed: () => _showTemplateMenu(context),
+                            color: const Color(0xFF764BA2),
+                          ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 24),
                   ],
-                  const SizedBox(height: 24),
 
                   // Individual Expense Input Fields - Organized by Category
                   Column(
                     children: [
                       // Food Items Section
-                      Card(
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'FOOD ITEMS',
-                                style: AppTheme.headingSmall.copyWith(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textPrimary,
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppTheme.lossColor.withOpacity(0.2),
+                                          AppTheme.lossColor.withOpacity(0.1),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(
+                                      Icons.restaurant_menu_rounded,
+                                      color: AppTheme.lossColor,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'FOOD ITEMS',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black87,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
                               ),
+                              const SizedBox(height: 20),
+                              _buildExpenseField(
+                                  '🐟 Fish (₹)', _fishController),
                               const SizedBox(height: 12),
-                              _buildExpenseField('Fish (₹)', _fishController),
-                              const SizedBox(height: 8),
-                              _buildExpenseField('Meat (₹)', _meatController),
-                              const SizedBox(height: 8),
                               _buildExpenseField(
-                                  'Chicken (₹)', _chickenController),
-                              const SizedBox(height: 8),
-                              _buildExpenseField('Milk (₹)', _milkController),
-                              const SizedBox(height: 8),
+                                  '🥩 Meat (₹)', _meatController),
+                              const SizedBox(height: 12),
                               _buildExpenseField(
-                                  'Parotta (₹)', _parottaController),
-                              const SizedBox(height: 8),
+                                  '🍗 Chicken (₹)', _chickenController),
+                              const SizedBox(height: 12),
                               _buildExpenseField(
-                                  'Pathiri (₹)', _pathiriController),
-                              const SizedBox(height: 8),
-                              _buildExpenseField('Dosa (₹)', _dosaController),
-                              const SizedBox(height: 8),
-                              _buildExpenseField('Appam (₹)', _appamController),
-                              const SizedBox(height: 8),
+                                  '🥛 Milk (₹)', _milkController),
+                              const SizedBox(height: 12),
                               _buildExpenseField(
-                                  'Coconut (₹)', _coconutController),
-                              const SizedBox(height: 8),
+                                  '🫓 Parotta (₹)', _parottaController),
+                              const SizedBox(height: 12),
                               _buildExpenseField(
-                                  'Vegetables (₹)', _vegetablesController),
-                              const SizedBox(height: 8),
-                              _buildExpenseField('Rice (₹)', _riceController),
+                                  '🥙 Pathiri (₹)', _pathiriController),
+                              const SizedBox(height: 12),
+                              _buildExpenseField(
+                                  '🥞 Dosa (₹)', _dosaController),
+                              const SizedBox(height: 12),
+                              _buildExpenseField(
+                                  '🥘 Appam (₹)', _appamController),
+                              const SizedBox(height: 12),
+                              _buildExpenseField(
+                                  '🥥 Coconut (₹)', _coconutController),
+                              const SizedBox(height: 12),
+                              _buildExpenseField(
+                                  '🥬 Vegetables (₹)', _vegetablesController),
+                              const SizedBox(height: 12),
+                              _buildExpenseField(
+                                  '🍚 Rice (₹)', _riceController),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
                       // Labor & Others Section
-                      Card(
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'LABOR & OTHER EXPENSES',
-                                style: AppTheme.headingSmall.copyWith(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textPrimary,
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppTheme.lossColor.withOpacity(0.2),
+                                          AppTheme.lossColor.withOpacity(0.1),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(
+                                      Icons.people_rounded,
+                                      color: AppTheme.lossColor,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'LABOR & OTHER EXPENSES',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black87,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
                               ),
+                              const SizedBox(height: 20),
+                              _buildExpenseField('👩‍🍳 Labor Manisha (₹)',
+                                  _laborManishaController),
+                              const SizedBox(height: 12),
+                              _buildExpenseField('👨‍🍳 Labor Midhun (₹)',
+                                  _laborMidhunController),
                               const SizedBox(height: 12),
                               _buildExpenseField(
-                                  'Labor Manisha (₹)', _laborManishaController),
-                              const SizedBox(height: 8),
-                              _buildExpenseField(
-                                  'Labor Midhun (₹)', _laborMidhunController),
-                              const SizedBox(height: 8),
-                              _buildExpenseField(
-                                  'Others (₹)', _othersController),
+                                  '📦 Others (₹)', _othersController),
                             ],
                           ),
                         ),
                       ),
+                      const SizedBox(height: 100), // Space for bottom bar
                     ],
                   ),
                 ],
@@ -729,63 +1128,136 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
         // Bottom section with total and save button
         bottomNavigationBar: Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.cardColor,
+            color: Colors.white,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, -2),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
               ),
             ],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Total Expense',
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: AppTheme.textSecondary,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.lossColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.trending_down,
+                                color: AppTheme.lossColor,
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Total Expense',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      Text(
-                        Formatters.formatCurrency(_calculateTotal()),
-                        style: AppTheme.headingMedium.copyWith(
-                          color: AppTheme.lossColor,
+                        const SizedBox(height: 6),
+                        Text(
+                          Formatters.formatCurrency(_calculateTotal()),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.lossColor,
+                            letterSpacing: -0.5,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _saveExpense,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.lossColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 12,
+                      ],
                     ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: _isLoading
+                              ? [Colors.grey.shade400, Colors.grey.shade500]
+                              : [
+                                  AppTheme.lossColor,
+                                  AppTheme.lossColor.withOpacity(0.8),
+                                ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: _isLoading
+                            ? []
+                            : [
+                                BoxShadow(
+                                  color: AppTheme.lossColor.withOpacity(0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _isLoading ? null : _saveExpense,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Center(
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.save_rounded,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        widget.existingExpense != null
+                                            ? 'Update'
+                                            : 'Save Expense',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                           ),
-                        )
-                      : const Text('Save Expense'),
-                ),
-              ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

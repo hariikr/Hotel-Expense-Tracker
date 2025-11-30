@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Function Tester</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .test-section.error { border-left-color: #f44336; }
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover { background: #45a049; }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: #4CAF50; font-weight: bold; }
+        .error { color: #f44336; font-weight: bold; }
+        .warning { color: #ff9800; font-weight: bold; }
+        .info {
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-badge.success { background: #4CAF50; color: white; }
+        .status-badge.error { background: #f44336; color: white; }
+        .status-badge.pending { background: #ff9800; color: white; }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Chat Function Diagnostic Tool</h1>
+        <p class="subtitle">Test your Supabase Edge Function step by step</p>
+        
+        <div class="info">
+            <strong>📍 Project:</strong> khpeuremcbkpdmombtkg<br>
+            <strong>🔗 URL:</strong> https://khpeuremcbkpdmombtkg.supabase.co/functions/v1/ai-chat
+        </div>
+        
+        <div class="test-section" id="test1">
+            <h2>Test 1: Edge Function Deployment <span class="status-badge pending" id="status1">Not Tested</span></h2>
+            <p>Checking if the edge function exists and responds...</p>
+            <button onclick="testFunctionDeployment()">▶ Run Test</button>
+            <div class="result" id="result1" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section" id="test2">
+            <h2>Test 2: Database Functions <span class="status-badge pending" id="status2">Not Tested</span></h2>
+            <p>Verifying database migration was applied...</p>
+            <button onclick="testDatabaseFunctions()">▶ Run Test</button>
+            <div class="result" id="result2" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section" id="test3">
+            <h2>Test 3: Simple Message Test <span class="status-badge pending" id="status3">Not Tested</span></h2>
+            <p>Testing AI response with a simple English message...</p>
+            <button onclick="testEnglishMessage()">▶ Run Test</button>
+            <div class="result" id="result3" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section" id="test4">
+            <h2>Test 4: Malayalam Support <span class="status-badge pending" id="status4">Not Tested</span></h2>
+            <p>Testing Malayalam language support...</p>
+            <button onclick="testMalayalamMessage()">▶ Run Test</button>
+            <div class="result" id="result4" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section" id="test5">
+            <h2>Test 5: Custom Message <span class="status-badge pending" id="status5">Not Tested</span></h2>
+            <input type="text" id="customMessage" placeholder="Type your message..." value="What is today's profit?">
+            <button onclick="testCustomMessage()">▶ Send Message</button>
+            <div class="result" id="result5" style="display:none;"></div>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <button onclick="runAllTests()" style="background: #2196F3; font-size: 18px; padding: 15px 30px;">
+                🚀 Run All Tests
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        const SUPABASE_URL = 'https://khpeuremcbkpdmombtkg.supabase.co';
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtocGV1cmVtY2JrcGRtb21idGtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0ODYyMDQsImV4cCI6MjA3NzA2MjIwNH0.PBFteAldiRWOR2t74QajvwqTLEfs2D32oWawakweaN4';
+        
+        function showResult(testNum, content, isError = false) {
+            const resultDiv = document.getElementById(`result${testNum}`);
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = content;
+            
+            const statusBadge = document.getElementById(`status${testNum}`);
+            const testSection = document.getElementById(`test${testNum}`);
+            
+            if (isError) {
+                statusBadge.textContent = '❌ Failed';
+                statusBadge.className = 'status-badge error';
+                testSection.classList.add('error');
+            } else {
+                statusBadge.textContent = '✅ Passed';
+                statusBadge.className = 'status-badge success';
+                testSection.classList.remove('error');
+            }
+        }
+        
+        function showLoading(testNum) {
+            const resultDiv = document.getElementById(`result${testNum}`);
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"></div> Testing...';
+        }
+        
+        async function testFunctionDeployment() {
+            showLoading(1);
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: 'test', userId: null })
+                });
+                
+                const status = response.status;
+                let text;
+                try {
+                    text = await response.text();
+                } catch (e) {
+                    text = 'Could not read response';
+                }
+                
+                if (status === 404) {
+                    showResult(1, `<span class="error">❌ FAILED - Function Not Found</span>\n\nHTTP Status: ${status}\n\n<strong>Problem:</strong> Edge function is NOT deployed\n\n<strong>Fix:</strong>\n1. Run deploy_ai_function.bat\n2. OR deploy manually at:\n   https://supabase.com/dashboard/project/khpeuremcbkpdmombtkg/functions`, true);
+                } else if (status === 500) {
+                    showResult(1, `<span class="warning">⚠️ DEPLOYED BUT HAS ERRORS</span>\n\nHTTP Status: ${status}\n\nResponse: ${text}\n\n<strong>Common Causes:</strong>\n1. GEMINI_API_KEY not set\n2. Database migration not applied\n\n<strong>Next Steps:</strong>\nRun Test 2 to check database\nThen set GEMINI_API_KEY in Supabase secrets`, true);
+                } else if (status === 200) {
+                    showResult(1, `<span class="success">✅ SUCCESS!</span>\n\nHTTP Status: ${status}\n\n✓ Edge function is deployed\n✓ Function is responding\n\nResponse:\n${text}`);
+                } else {
+                    showResult(1, `<span class="warning">⚠️ Unexpected Status</span>\n\nHTTP Status: ${status}\n\nResponse: ${text}`, true);
+                }
+            } catch (error) {
+                showResult(1, `<span class="error">❌ CONNECTION ERROR</span>\n\nError: ${error.message}\n\n<strong>Possible causes:</strong>\n- No internet connection\n- Supabase is down\n- CORS issues`, true);
+            }
+        }
+        
+        async function testDatabaseFunctions() {
+            showLoading(2);
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_daily_data`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': ANON_KEY,
+                        'Authorization': `Bearer ${ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ target_date: '2024-01-01' })
+                });
+                
+                const status = response.status;
+                const text = await response.text();
+                
+                if (status === 404) {
+                    showResult(2, `<span class="error">❌ FAILED - Function Not Found</span>\n\nHTTP Status: ${status}\n\n<strong>Problem:</strong> Database migration NOT applied\n\n<strong>Fix:</strong>\n1. Go to: https://supabase.com/dashboard/project/khpeuremcbkpdmombtkg/sql\n2. Copy ALL contents of 005_ai_chat_setup.sql\n3. Paste and click RUN`, true);
+                } else if (status === 200) {
+                    showResult(2, `<span class="success">✅ SUCCESS!</span>\n\nHTTP Status: ${status}\n\n✓ Database functions installed\n✓ Migration was applied correctly\n\nResponse:\n${text}`);
+                } else {
+                    showResult(2, `<span class="warning">⚠️ Unexpected Status</span>\n\nHTTP Status: ${status}\n\nResponse: ${text}`, true);
+                }
+            } catch (error) {
+                showResult(2, `<span class="error">❌ ERROR</span>\n\nError: ${error.message}`, true);
+            }
+        }
+        
+        async function testEnglishMessage() {
+            showLoading(3);
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: 'Hello', userId: null })
+                });
+                
+                const status = response.status;
+                const data = await response.json();
+                
+                if (status === 200 && data.reply) {
+                    showResult(3, `<span class="success">✅ SUCCESS!</span>\n\nHTTP Status: ${status}\n\n<strong>AI Reply:</strong>\n${data.reply}\n\n<strong>Tools Used:</strong> ${data.toolsUsed?.join(', ') || 'None'}`);
+                } else {
+                    showResult(3, `<span class="error">❌ FAILED</span>\n\nHTTP Status: ${status}\n\nResponse:\n${JSON.stringify(data, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult(3, `<span class="error">❌ ERROR</span>\n\nError: ${error.message}`, true);
+            }
+        }
+        
+        async function testMalayalamMessage() {
+            showLoading(4);
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: 'ഹലോ', userId: null })
+                });
+                
+                const status = response.status;
+                const data = await response.json();
+                
+                if (status === 200 && data.reply) {
+                    showResult(4, `<span class="success">✅ SUCCESS!</span>\n\nHTTP Status: ${status}\n\n<strong>AI Reply:</strong>\n${data.reply}\n\n<strong>Malayalam Support:</strong> Working!`);
+                } else {
+                    showResult(4, `<span class="error">❌ FAILED</span>\n\nHTTP Status: ${status}\n\nResponse:\n${JSON.stringify(data, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult(4, `<span class="error">❌ ERROR</span>\n\nError: ${error.message}`, true);
+            }
+        }
+        
+        async function testCustomMessage() {
+            const message = document.getElementById('customMessage').value;
+            if (!message.trim()) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            showLoading(5);
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message, userId: null })
+                });
+                
+                const status = response.status;
+                const data = await response.json();
+                
+                if (status === 200 && data.reply) {
+                    showResult(5, `<span class="success">✅ SUCCESS!</span>\n\n<strong>Your Message:</strong>\n${message}\n\n<strong>AI Reply:</strong>\n${data.reply}\n\n<strong>Tools:</strong> ${data.toolsUsed?.join(', ') || 'None'}`);
+                } else {
+                    showResult(5, `<span class="error">❌ FAILED</span>\n\nResponse:\n${JSON.stringify(data, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult(5, `<span class="error">❌ ERROR</span>\n\nError: ${error.message}`, true);
+            }
+        }
+        
+        async function runAllTests() {
+            await testFunctionDeployment();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            await testDatabaseFunctions();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            await testEnglishMessage();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            await testMalayalamMessage();
+        }
+    </script>
+</body>
+</html>

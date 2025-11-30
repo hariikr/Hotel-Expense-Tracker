@@ -1,15 +1,20 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/data_service.dart';
 import '../../services/supabase_service.dart';
 import 'income_event.dart';
 import 'income_state.dart';
 
 class IncomeBloc extends Bloc<IncomeEvent, IncomeState> {
-  final SupabaseService _supabaseService;
+  final DataService _dataService;
+  final SupabaseService? _supabaseService;
   RealtimeChannel? _incomeSubscription;
 
-  IncomeBloc(this._supabaseService) : super(const IncomeInitial()) {
+  IncomeBloc(this._dataService)
+      : _supabaseService =
+            _dataService is SupabaseService ? _dataService : null,
+        super(const IncomeInitial()) {
     on<LoadAllIncome>(_onLoadAllIncome);
     on<LoadIncomeByDate>(_onLoadIncomeByDate);
     on<UpsertIncome>(_onUpsertIncome);
@@ -20,11 +25,13 @@ class IncomeBloc extends Bloc<IncomeEvent, IncomeState> {
   }
 
   void _subscribeToRealtime() {
-    _incomeSubscription = _supabaseService.subscribeToIncome(
-      (payload) {
-        add(const LoadAllIncome());
-      },
-    );
+    if (_supabaseService != null) {
+      _incomeSubscription = _supabaseService!.subscribeToIncome(
+        (payload) {
+          add(const LoadAllIncome());
+        },
+      );
+    }
   }
 
   Future<void> _onLoadAllIncome(
@@ -33,7 +40,7 @@ class IncomeBloc extends Bloc<IncomeEvent, IncomeState> {
   ) async {
     emit(const IncomeLoading());
     try {
-      final incomes = await _supabaseService.fetchAllIncome();
+      final incomes = await _dataService.fetchAllIncome();
       emit(IncomeLoaded(incomes: incomes));
     } catch (e) {
       emit(IncomeError(e.toString()));
@@ -45,7 +52,7 @@ class IncomeBloc extends Bloc<IncomeEvent, IncomeState> {
     Emitter<IncomeState> emit,
   ) async {
     try {
-      final income = await _supabaseService.fetchIncomeByDate(event.date,
+      final income = await _dataService.fetchIncomeByDate(event.date,
           context: event.context);
       if (state is IncomeLoaded) {
         emit((state as IncomeLoaded).copyWith(selectedIncome: income));
@@ -65,7 +72,7 @@ class IncomeBloc extends Bloc<IncomeEvent, IncomeState> {
     Emitter<IncomeState> emit,
   ) async {
     try {
-      await _supabaseService.upsertIncome(event.income);
+      await _dataService.upsertIncome(event.income);
       emit(const IncomeOperationSuccess('Income saved successfully'));
       add(const LoadAllIncome());
     } catch (e) {
@@ -78,7 +85,7 @@ class IncomeBloc extends Bloc<IncomeEvent, IncomeState> {
     Emitter<IncomeState> emit,
   ) async {
     try {
-      await _supabaseService.deleteIncome(event.id);
+      await _dataService.deleteIncome(event.id);
       emit(const IncomeOperationSuccess('Income deleted successfully'));
       add(const LoadAllIncome());
     } catch (e) {
@@ -99,8 +106,8 @@ class IncomeBloc extends Bloc<IncomeEvent, IncomeState> {
 
   @override
   Future<void> close() {
-    if (_incomeSubscription != null) {
-      _supabaseService.unsubscribe(_incomeSubscription!);
+    if (_incomeSubscription != null && _supabaseService != null) {
+      _supabaseService!.unsubscribe(_incomeSubscription!);
     }
     return super.close();
   }
