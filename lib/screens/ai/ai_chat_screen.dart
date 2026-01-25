@@ -548,356 +548,218 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
             // Typing Indicator (WhatsApp-style)
             if (_isLoading)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    children: [
-                      // AI Avatar
-                      Container(
-                        width: 36,
-                        height: 36,
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF667EEA).withOpacity(0.25),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      // Typing bubble
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: Colors.grey.shade200,
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Animated dots
-                            _buildTypingDot(0),
-                            const SizedBox(width: 4),
-                            _buildTypingDot(1),
-                            const SizedBox(width: 4),
-                            _buildTypingDot(2),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Voice listening indicator (Gemini Live style)
-              if (_isListening)
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Container(
-                      width: double.infinity,
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  children: [
+                    // AI Avatar
+                    Container(
+                      width: 36,
+                      height: 36,
+                      margin: const EdgeInsets.only(right: 6),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFF667EEA).withOpacity(0.08),
-                            const Color(0xFF764BA2).withOpacity(0.05),
-                          ],
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF667EEA).withOpacity(0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: Column(
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    // Typing bubble
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 6,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Animated waveform circles (Gemini style) - Compact version
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Outer ripple
-                              _buildRippleCircle(
-                                  80, 0, Colors.deepPurple.shade100),
-                              _buildRippleCircle(
-                                  60, 200, Colors.deepPurple.shade200),
+                          // Animated dots
+                          _buildTypingDot(0),
+                          const SizedBox(width: 4),
+                          _buildTypingDot(1),
+                          const SizedBox(width: 4),
+                          _buildTypingDot(2),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-                              // Center microphone
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          const Color(0xFF667EEA).withOpacity(0.4),
-                                      blurRadius: 20,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.mic,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                            ],
-                          ),
+            // Voice listening indicator (Gemini Live style)
+            if (_isListening)
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 24, horizontal: 24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF667EEA).withOpacity(0.08),
+                          const Color(0xFF764BA2).withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Animated waveform circles (Gemini style) - Compact version
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Outer ripple
+                            _buildRippleCircle(
+                                80, 0, Colors.deepPurple.shade100),
+                            _buildRippleCircle(
+                                60, 200, Colors.deepPurple.shade200),
 
-                          const SizedBox(height: 16),
-
-                          // Status text
-                          const Text(
-                            'ശ്രദ്ധിക്കുന്നു...',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF667EEA),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-
-                          const SizedBox(height: 4),
-
-                          Text(
-                            'സംസാരിക്കൂ',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-
-                          // Recognized text display
-                          if (_messageController.text.isNotEmpty) ...[
-                            const SizedBox(height: 12),
+                            // Center microphone
                             Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              constraints: const BoxConstraints(maxHeight: 80),
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFF667EEA).withOpacity(0.3),
-                                  width: 1.5,
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF667EEA),
+                                    Color(0xFF764BA2)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
+                                shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
+                                    color: const Color(0xFF667EEA)
+                                        .withOpacity(0.4),
+                                    blurRadius: 20,
+                                    spreadRadius: 2,
                                   ),
                                 ],
                               ),
-                              child: SingleChildScrollView(
-                                child: Text(
-                                  _messageController.text,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF2D3748),
-                                    height: 1.4,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+                              child: const Icon(
+                                Icons.mic,
+                                color: Colors.white,
+                                size: 24,
                               ),
                             ),
                           ],
+                        ),
 
+                        const SizedBox(height: 16),
+
+                        // Status text
+                        const Text(
+                          'ശ്രദ്ധിക്കുന്നു...',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF667EEA),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        Text(
+                          'സംസാരിക്കൂ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+
+                        // Recognized text display
+                        if (_messageController.text.isNotEmpty) ...[
                           const SizedBox(height: 12),
-
-                          // Stop button
-                          TextButton.icon(
-                            onPressed: _stopListening,
-                            icon: const Icon(Icons.stop_circle, size: 18),
-                            label: const Text(
-                              'നിർത്തുക',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            constraints: const BoxConstraints(maxHeight: 80),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF667EEA).withOpacity(0.3),
+                                width: 1.5,
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.red.shade600,
-                              backgroundColor: Colors.red.shade50,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 8,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                            child: SingleChildScrollView(
+                              child: Text(
+                                _messageController.text,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF2D3748),
+                                  height: 1.4,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                ),
 
-              // Input Area with Voice
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 5,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        // Voice button (Gemini Live style)
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: _isListening
-                                ? const LinearGradient(
-                                    colors: [
-                                      Color(0xFFFF5252),
-                                      Color(0xFFE53935)
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : const LinearGradient(
-                                    colors: [
-                                      Color(0xFF667EEA),
-                                      Color(0xFF764BA2)
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _isListening
-                                    ? Colors.red.withOpacity(0.3)
-                                    : const Color(0xFF667EEA).withOpacity(0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: _isLoading
-                                  ? null
-                                  : (_isListening
-                                      ? _stopListening
-                                      : _startListening),
-                              borderRadius: BorderRadius.circular(28),
-                              child: Container(
-                                width: 56,
-                                height: 56,
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  _isListening
-                                      ? Icons.stop_rounded
-                                      : Icons.mic_rounded,
-                                  color: Colors.white,
-                                  size: 28,
-                                ),
-                              ),
+                        const SizedBox(height: 12),
+
+                        // Stop button
+                        TextButton.icon(
+                          onPressed: _stopListening,
+                          icon: const Icon(Icons.stop_circle, size: 18),
+                          label: const Text(
+                            'നിർത്തുക',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(24),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red.shade600,
+                            backgroundColor: Colors.red.shade50,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
                             ),
-                            child: TextField(
-                              controller: _messageController,
-                              enabled: !_isLoading && !_isListening,
-                              decoration: const InputDecoration(
-                                hintText: 'സന്ദേശം ടൈപ്പ് ചെയ്യുക...',
-                                hintStyle: TextStyle(color: Colors.grey),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                              ),
-                              maxLines: null,
-                              textCapitalization: TextCapitalization.sentences,
-                              onSubmitted: (_) => _sendMessage(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Send button (Gemini Live style)
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF667EEA).withOpacity(0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: (_isLoading || _isListening)
-                                  ? null
-                                  : _sendMessage,
-                              borderRadius: BorderRadius.circular(28),
-                              child: Container(
-                                width: 56,
-                                height: 56,
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.send_rounded,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
                         ),
@@ -906,8 +768,149 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   ),
                 ),
               ),
-            ],
-          ),
+
+            // Input Area with Voice
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    // ignore: deprecated_member_use
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      // Voice button (Gemini Live style)
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: _isListening
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF5252),
+                                    Color(0xFFE53935)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : const LinearGradient(
+                                  colors: [
+                                    Color(0xFF667EEA),
+                                    Color(0xFF764BA2)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _isListening
+                                  ? Colors.red.withOpacity(0.3)
+                                  : const Color(0xFF667EEA).withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _isLoading
+                                ? null
+                                : (_isListening
+                                    ? _stopListening
+                                    : _startListening),
+                            borderRadius: BorderRadius.circular(28),
+                            child: Container(
+                              width: 56,
+                              height: 56,
+                              alignment: Alignment.center,
+                              child: Icon(
+                                _isListening
+                                    ? Icons.stop_rounded
+                                    : Icons.mic_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: TextField(
+                            controller: _messageController,
+                            enabled: !_isLoading && !_isListening,
+                            decoration: const InputDecoration(
+                              hintText: 'സന്ദേശം ടൈപ്പ് ചെയ്യുക...',
+                              hintStyle: TextStyle(color: Colors.grey),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                            ),
+                            maxLines: null,
+                            textCapitalization: TextCapitalization.sentences,
+                            onSubmitted: (_) => _sendMessage(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Send button (Gemini Live style)
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF667EEA).withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: (_isLoading || _isListening)
+                                ? null
+                                : _sendMessage,
+                            borderRadius: BorderRadius.circular(28),
+                            child: Container(
+                              width: 56,
+                              height: 56,
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

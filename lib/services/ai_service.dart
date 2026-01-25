@@ -155,6 +155,13 @@ class AiService {
         timestamp: DateTime.now(),
       );
     } catch (e) {
+      // Log the actual error for debugging
+      print('❌ AI Service Error: $e');
+      print('Error type: ${e.runtimeType}');
+      if (e is Exception) {
+        print('Exception details: ${e.toString()}');
+      }
+
       // Return a user-friendly error message
       return AiChatResponse(
         reply: _getErrorMessage(e),
@@ -224,13 +231,21 @@ class AiService {
   String _getErrorMessage(dynamic error) {
     final errorMsg = error.toString().toLowerCase();
 
+    print('🔍 Error message analysis: $errorMsg');
+
     // Check for specific error types
     if (errorMsg.contains('network') || errorMsg.contains('connection')) {
       return 'Network error. Please check your connection.\n\nനെറ്റ്‌വർക്ക് പിശക്. നിങ്ങളുടെ കണക്ഷൻ പരിശോധിക്കുക.';
     } else if (errorMsg.contains('timeout')) {
       return 'Request timed out. Please try again.\n\nസമയം കഴിഞ്ഞു. ദയവായി വീണ്ടും ശ്രമിക്കുക.';
+    } else if (errorMsg.contains('404') || errorMsg.contains('not found')) {
+      return 'Edge Function not found. Please deploy the AI function.\n\nEdge Function കണ്ടെത്താനായില്ല. AI function deploy ചെയ്യുക.';
+    } else if (errorMsg.contains('401') || errorMsg.contains('unauthorized')) {
+      return 'Authentication failed. Please check your Supabase configuration.\n\nപ്രാമാണീകരണം പരാജയപ്പെട്ടു. Supabase കോൺഫിഗറേഷൻ പരിശോധിക്കുക.';
+    } else if (errorMsg.contains('500') || errorMsg.contains('internal')) {
+      return 'Server error. The AI function may have an issue.\n\nസെർവർ പിശക്. AI function-ൽ പ്രശ്‌നമുണ്ടാകാം.';
     } else {
-      return 'AI is not available right now. Please try again later.\n\nAI ഇപ്പോൾ ലഭ്യമല്ല. ദയവായി പിന്നീട് ശ്രമിക്കുക.';
+      return 'Error: $errorMsg\n\nAI is not available right now. Please try again later.\n\nAI ഇപ്പോൾ ലഭ്യമല്ല. ദയവായി പിന്നീട് ശ്രമിക്കുക.';
     }
   }
 }
