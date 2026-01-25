@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 class DailySummary extends Equatable {
   final String id;
+  final String? userId; // User ID for multi-tenant support
   final DateTime date;
   final double totalIncome;
   final double totalExpense;
@@ -12,6 +13,7 @@ class DailySummary extends Equatable {
 
   const DailySummary({
     required this.id,
+    this.userId,
     required this.date,
     required this.totalIncome,
     required this.totalExpense,
@@ -27,6 +29,7 @@ class DailySummary extends Equatable {
   factory DailySummary.fromJson(Map<String, dynamic> json) {
     return DailySummary(
       id: json['id'] as String,
+      userId: json['user_id'] as String?,
       date: DateTime.parse(json['date'] as String),
       totalIncome: _parseDouble(json['total_income']),
       totalExpense: _parseDouble(json['total_expense']),
@@ -44,6 +47,7 @@ class DailySummary extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'user_id': userId,
       'date': date.toIso8601String(),
       'total_income': totalIncome,
       'total_expense': totalExpense,
@@ -54,6 +58,7 @@ class DailySummary extends Equatable {
 
   Map<String, dynamic> toInsertJson() {
     return {
+      if (userId != null) 'user_id': userId,
       'date': date.toIso8601String(),
       'total_income': totalIncome,
       'total_expense': totalExpense,
@@ -80,6 +85,7 @@ class DailySummary extends Equatable {
 
   DailySummary copyWith({
     String? id,
+    String? userId,
     DateTime? date,
     double? totalIncome,
     double? totalExpense,
@@ -90,6 +96,7 @@ class DailySummary extends Equatable {
   }) {
     return DailySummary(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       date: date ?? this.date,
       totalIncome: totalIncome ?? this.totalIncome,
       totalExpense: totalExpense ?? this.totalExpense,
@@ -103,6 +110,7 @@ class DailySummary extends Equatable {
   @override
   List<Object?> get props => [
         id,
+        userId,
         date,
         totalIncome,
         totalExpense,

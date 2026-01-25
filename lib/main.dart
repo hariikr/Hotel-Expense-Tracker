@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'blocs/dashboard/dashboard_bloc.dart';
-import 'blocs/income/income_bloc.dart';
-import 'blocs/expense/expense_bloc.dart';
-import 'services/supabase_service.dart';
-import 'services/offline_first_service.dart';
+import 'core/services/supabase_service.dart';
+import 'features/settings/cubits/category_cubit.dart';
+import 'features/settings/repositories/category_repository.dart';
+import 'features/transactions/cubits/transaction_cubit.dart';
+import 'features/transactions/repositories/transaction_repository.dart';
+import 'blocs/auth/auth_bloc.dart';
+import 'services/auth_service.dart';
+import 'screens/auth/auth_wrapper.dart';
+import 'utils/app_theme.dart';
+import 'utils/constants.dart';
+
+// Services - (Keeping old ones if needed for other parts, but SupabaseService is replaced)
 import 'services/network_service.dart';
 import 'services/language_service.dart';
 import 'services/notification_service.dart';
-import 'screens/main_navigation.dart';
-import 'utils/app_theme.dart';
-import 'utils/constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,27 +44,37 @@ class HotelExpenseTrackerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final supabaseClient = Supabase.instance.client;
-    final supabaseService = SupabaseService(supabaseClient);
-    final offlineFirstService = OfflineFirstService(supabaseService);
+    // Core Services
+    // Note: SupabaseService is a singleton in core/services/supabase_service.dart
+    final supabaseService = SupabaseService();
+
+    // Repositories
+    final categoryRepository =
+        CategoryRepository(supabaseService: supabaseService);
+    final transactionRepository =
+        TransactionRepository(supabaseService: supabaseService);
+    final authService = AuthService();
 
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => DashboardBloc(offlineFirstService),
+          create: (context) => AuthBloc(authService: authService),
         ),
         BlocProvider(
-          create: (context) => IncomeBloc(offlineFirstService),
+          create: (context) =>
+              CategoryCubit(repository: categoryRepository)..loadCategories(),
         ),
         BlocProvider(
-          create: (context) => ExpenseBloc(offlineFirstService),
+          create: (context) =>
+              TransactionCubit(repository: transactionRepository)
+                ..loadTransactions(DateTime.now()),
         ),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const MainNavigation(),
+        home: const AuthWrapper(),
       ),
     );
   }

@@ -1,0 +1,324 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../features/transactions/cubits/transaction_cubit.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../utils/app_theme.dart';
+import '../../utils/translations.dart';
+import '../../services/language_service.dart';
+import '../../widgets/calculator_widget.dart';
+import '../../services/share_service.dart';
+import 'add_income_screen.dart';
+import 'add_expense_screen.dart';
+import '../settings/manage_categories_screen.dart';
+
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  String get _lang => LanguageService.getLanguageCode();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() {
+    context.read<TransactionCubit>().loadTransactions(DateTime.now());
+  }
+
+  Future<void> _shareToday(TransactionLoaded state) async {
+    await ShareService.shareDailySummary(
+      date: state.selectedDate,
+      expenses: state.expenses,
+      incomes: state.incomes,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: AppBar(
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+          ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.food_bank, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppTranslations.get(
+                    {'en': 'Hotel Expense', 'ml': 'ഹോട്ടൽ ചെലവ്'},
+                    _lang,
+                  ),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Text(
+                  AppTranslations.get(AppTranslations.dashboard, _lang),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          BlocBuilder<TransactionCubit, TransactionState>(
+            builder: (context, state) {
+              if (state is TransactionLoaded) {
+                return IconButton(
+                  icon: const Icon(Icons.share, size: 20),
+                  onPressed: () => _shareToday(state),
+                  tooltip: 'Share',
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 20),
+            onPressed: _loadData,
+            tooltip: 'Refresh',
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      drawer: Drawer(
+        child: Column(
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Colors.white,
+                      child: Icon(Icons.person, color: AppTheme.primaryColor),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'Hotel Manager',
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.category, color: AppTheme.primaryColor),
+              title:
+                  const Text('കാറ്റഗറികൾ നിയന്ത്രിക്കുക (Manage Categories)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ManageCategoriesScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('ലോഗൗട്ട് (Logout)'),
+              onTap: () {
+                // Confirm logout
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Logout'),
+                    content: const Text('നിങ്ങൾക്ക് ലോഗൗട്ട് ചെയ്യണോ?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('അല്ല (No)'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          // Trigger logout event
+                          context.read<AuthBloc>().add(AuthSignOutRequested());
+                        },
+                        child: const Text('അതെ (Yes)',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      body: BlocBuilder<TransactionCubit, TransactionState>(
+        builder: (context, state) {
+          if (state is TransactionLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is TransactionError) {
+            return Center(child: Text('Error: ${state.message}'));
+          }
+
+          if (state is TransactionLoaded) {
+            return RefreshIndicator(
+              onRefresh: () async => _loadData(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Summary Section
+                    _buildHeader(state),
+
+                    // Quick Actions
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildQuickActions(context),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return const Center(child: Text('No Data'));
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => const CalculatorDialog(),
+          );
+        },
+        backgroundColor: AppTheme.primaryColor,
+        child: const Icon(Icons.calculate),
+      ),
+    );
+  }
+
+  Widget _buildHeader(TransactionLoaded state) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatCard('Income', state.totalIncome, Colors.greenAccent),
+              _buildStatCard('Expense', state.totalExpense, Colors.redAccent),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildStatCard('Profit', state.profit, Colors.white, isLarge: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, double amount, Color color,
+      {bool isLarge = false}) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: isLarge ? 16 : 14,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '₹${amount.toStringAsFixed(0)}',
+          style: TextStyle(
+            color: color,
+            fontSize: isLarge ? 32 : 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const AddIncomeScreen()),
+              ).then((_) => _loadData());
+            },
+            icon: const Icon(Icons.arrow_downward),
+            label: const Text('Add Income'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.profitColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const AddExpenseScreen()),
+              ).then((_) => _loadData());
+            },
+            icon: const Icon(Icons.arrow_upward),
+            label: const Text('Add Expense'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.lossColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

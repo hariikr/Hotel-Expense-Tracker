@@ -55,39 +55,56 @@ serve(async (req) => {
 
     console.log(`📅 Analyzing data from ${startDate} to ${endDate}`);
 
-    // Fetch financial data
-    const { data: rangeData, error: rangeError } = await supabase.rpc('get_range_data', {
-      start_date: startDate,
-      end_date: endDate
-    });
-
-    if (rangeError) throw rangeError;
-
-    // Fetch top expense categories
-    const { data: topExpenses, error: expenseError } = await supabase.rpc('get_top_expense_categories', {
-      start_date: startDate,
-      end_date: endDate,
-      top_n: 5
+    // Fetch financial data using new analytics functions
+    const { data: expenseSummary, error: expenseError } = await supabase.rpc('get_expense_summary_by_category', {
+      p_user_id: userId,
+      p_start_date: startDate,
+      p_end_date: endDate
     });
 
     if (expenseError) throw expenseError;
 
-    // Fetch income breakdown
-    const { data: incomeBreakdown, error: incomeError } = await supabase.rpc('get_income_breakdown', {
-      start_date: startDate,
-      end_date: endDate
+    const { data: incomeSummary, error: incomeError } = await supabase.rpc('get_income_summary_by_category', {
+      p_user_id: userId,
+      p_start_date: startDate,
+      p_end_date: endDate
     });
 
     if (incomeError) throw incomeError;
 
-    // Fetch recent transactions
-    const { data: recentDays, error: recentError } = await supabase.rpc('get_recent_transactions', {
-      days_limit: 7
+    const { data: dailyTrend, error: trendError } = await supabase.rpc('get_daily_trend', {
+      p_user_id: userId,
+      p_days_count: 7
     });
 
-    if (recentError) throw recentError;
+    if (trendError) throw trendError;
 
-    const summary = rangeData && rangeData.length > 0 ? rangeData[0] : null;
+    const { data: savingsData, error: savingsError } = await supabase.rpc('get_savings_rate', {
+      p_user_id: userId,
+      p_start_date: startDate,
+      p_end_date: endDate
+    });
+
+    if (savingsError) throw savingsError;
+
+    // Calculate summary from the data
+    const totalIncome = incomeSummary?.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0) || 0;
+    const totalExpense = expenseSummary?.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0) || 0;
+    const profit = totalIncome - totalExpense;
+    const profitMargin = totalIncome > 0 ? ((profit / totalIncome) * 100).toFixed(2) : 0;
+    const profitableDays = dailyTrend?.filter((day: any) => day.profit > 0).length || 0;
+    const totalDays = dailyTrend?.length || 0;
+    const avgDailyIncome = totalDays > 0 ? (totalIncome / totalDays).toFixed(2) : 0;
+
+    const summary = {
+      total_income: totalIncome,
+      total_expense: totalExpense,
+      profit: profit,
+      profit_margin: profitMargin,
+      avg_daily_income: avgDailyIncome,
+      profitable_days: profitableDays,
+      total_days: totalDays
+    };
 
     if (!summary) {
       return new Response(
@@ -101,8 +118,18 @@ serve(async (req) => {
     }
 
     console.log('📊 Data summary:', summary);
-    console.log('💸 Top expenses:', topExpenses);
-    console.log('💰 Income breakdown:', incomeBreakdown);
+    console.log('💸 Top expenses:', expenseSummary);
+    console.log('💰 Income breakdown:', incomeSummary);
+    console.log('📈 Daily trend:', dailyTrend);
+
+    // Get top 5 expense categories
+    const topExpenses = expenseSummary?.slice(0, 5) || [];
+    
+    // Get income breakdown
+    const onlineIncome = incomeSummary?.find((item: any) => item.category_name?.toLowerCase() === 'online')?.total_amount || 0;
+    const offlineIncome = incomeSummary?.find((item: any) => item.category_name?.toLowerCase() === 'offline')?.total_amount || 0;
+    const onlinePercentage = totalIncome > 0 ? ((onlineIncome / totalIncome) * 100).toFixed(1) : 0;
+    const offlinePercentage = totalIncome > 0 ? ((offlineIncome / totalIncome) * 100).toFixed(1) : 0;
 
     // Build prompt for Gemini
     const prompt = `You are a professional business analyst for a small hotel/restaurant in Kerala, India. Analyze this financial data and provide actionable insights in Malayalam.
@@ -119,17 +146,17 @@ FINANCIAL DATA (${period === 'today' ? 'Today' : period === 'week' ? 'Last 7 Day
 • Profitable Days: ${summary.profitable_days || 0} out of ${summary.total_days || 0}
 
 💰 INCOME BREAKDOWN:
-• Online Income: ₹${incomeBreakdown?.[0]?.online_income || 0} (${incomeBreakdown?.[0]?.online_percentage || 0}%)
-• Offline Income: ₹${incomeBreakdown?.[0]?.offline_income || 0} (${incomeBreakdown?.[0]?.offline_percentage || 0}%)
+• Online Income: ₹${onlineIncome} (${onlinePercentage}%)
+• Offline Income: ₹${offlineIncome} (${offlinePercentage}%)
 
 💸 TOP EXPENSE CATEGORIES:
 ${topExpenses?.map((exp: any, idx: number) => 
-  `${idx + 1}. ${exp.category}: ₹${exp.total_amount} (${exp.percentage}%)`
+  `${idx + 1}. ${exp.category_name}: ₹${exp.total_amount} (${exp.percentage}%)`
 ).join('\n') || 'No expense data'}
 
 📈 RECENT TREND (Last 7 Days):
-${recentDays?.slice(0, 5).map((day: any) => 
-  `• ${day.date}: Profit ₹${day.profit} (Income: ₹${day.total_income}, Expense: ₹${day.total_expense})`
+${dailyTrend?.slice(0, 5).map((day: any) => 
+  `• ${day.trend_date}: Profit ₹${day.profit} (Income: ₹${day.total_income}, Expense: ₹${day.total_expense})`
 ).join('\n') || 'No recent data'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -188,7 +215,7 @@ IMPORTANT RULES:
       throw new Error('GEMINI_API_KEY not configured');
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -249,7 +276,7 @@ IMPORTANT RULES:
         {
           type: 'income',
           title: 'വരുമാന വിശകലനം',
-          message: `ഓൺലൈൻ: ₹${incomeBreakdown?.[0]?.online_income || 0}, ഓഫ്‌ലൈൻ: ₹${incomeBreakdown?.[0]?.offline_income || 0}. ${incomeBreakdown?.[0]?.online_percentage > 50 ? 'ഓൺലൈൻ കൂടുതൽ!' : 'ഓഫ്‌ലൈൻ കൂടുതൽ!'}`,
+          message: `ഓൺലൈൻ: ₹${onlineIncome}, ഓഫ്‌ലൈൻ: ₹${offlineIncome}. ${parseFloat(onlinePercentage as string) > 50 ? 'ഓൺലൈൻ കൂടുതൽ!' : 'ഓഫ്‌ലൈൻ കൂടുതൽ!'}`,
           icon: '💵'
         }
       ];
@@ -286,11 +313,11 @@ IMPORTANT RULES:
       errorMessage = error.message;
       
       // Check specific error types
-      if (errorMessage.includes('get_range_data') || 
-          errorMessage.includes('get_top_expense_categories') ||
-          errorMessage.includes('get_income_breakdown') ||
-          errorMessage.includes('get_recent_transactions')) {
-        errorMessage = 'Database functions not found. Please run migrations: supabase db reset';
+      if (errorMessage.includes('get_expense_summary_by_category') || 
+          errorMessage.includes('get_income_summary_by_category') ||
+          errorMessage.includes('get_daily_trend') ||
+          errorMessage.includes('get_savings_rate')) {
+        errorMessage = 'Database analytics functions not found. Please run migration 102: supabase db push';
       } else if (errorMessage.includes('GEMINI_API_KEY')) {
         errorMessage = 'Gemini API key not configured. Please set GEMINI_API_KEY secret.';
       } else if (errorMessage.includes('Gemini API error')) {

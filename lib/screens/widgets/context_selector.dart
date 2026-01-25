@@ -30,15 +30,18 @@ class ContextSelector extends StatelessWidget {
     );
   }
 
-  Widget _buildContextButton(BuildContext context, String contextType, IconData icon) {
-    final isSelected = selectedContext.toLowerCase() == contextType.toLowerCase();
+  Widget _buildContextButton(
+      BuildContext context, String contextType, IconData icon) {
+    final isSelected =
+        selectedContext.toLowerCase() == contextType.toLowerCase();
     return GestureDetector(
       onTap: () => onContextChanged(contextType.toLowerCase()),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+          color:
+              isSelected ? Theme.of(context).primaryColor : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -46,13 +49,16 @@ class ContextSelector extends StatelessWidget {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? Colors.white : Theme.of(context).iconTheme.color,
+              color:
+                  isSelected ? Colors.white : Theme.of(context).iconTheme.color,
             ),
             const SizedBox(width: 6),
             Text(
               contextType,
               style: TextStyle(
-                color: isSelected ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
+                color: isSelected
+                    ? Colors.white
+                    : Theme.of(context).textTheme.bodyLarge?.color,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

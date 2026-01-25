@@ -653,244 +653,110 @@ AI: "നന്ദി എനിക്കല്ല, ഹരിക്ക് പറ�
 
 നിങ്ങളുടെ ലക്ഷ്യം: അമ്മയുടെ വിശ്വസ്ത സാമ്പത്തിക സഹായിയും സുഹൃത്തും ആകുക. സ്നേഹത്തോടെ സഹായിക്കുക. 💚`;
 
-
 // Tool definitions for function calling
 const TOOLS = [
   {
-    name: "get_daily_summary",
-    description: "Get financial summary for a SPECIFIC DATE. Use this for: 'ഇന്ന്' (today), 'ഇന്നലെ' (yesterday), 'കഴിഞ്ഞ തിങ്കൾ' (last monday), specific dates like 'നവംബർ 21' or '21 നവംബർ'. ALWAYS call this tool when user asks about a specific day's data - DO NOT make up numbers!",
+    name: "get_expense_summary_by_category",
+    description: "Get expense breakdown by category with amounts and percentages for a date range.",
     parameters: {
       type: "object",
       properties: {
-        date: {
-          type: "string",
-          description: "Date in YYYY-MM-DD format (e.g., '2024-11-21') OR relative date like: 'today', 'yesterday', 'last monday', 'last tuesday', 'last wednesday', 'last thursday', 'last friday', 'last saturday', 'last sunday'. For Malayalam month names, convert to YYYY-MM-DD format."
-        }
-      },
-      required: ["date"]
-    }
-  },
-  {
-    name: "get_range_summary",
-    description: "Get aggregated summary for a DATE RANGE. Use this for: weekly summaries ('ഈ ആഴ്ച', 'കഴിഞ്ഞ ആഴ്ച'), monthly summaries ('ഈ മാസം', 'കഴിഞ്ഞ മാസം'), custom ranges like 'നവംബർ 1 മുതൽ 15 വരെ'. Returns totals, averages, profitable days count.",
-    parameters: {
-      type: "object",
-      properties: {
-        start_date: {
-          type: "string",
-          description: "Start date in YYYY-MM-DD format (e.g., '2024-11-01')"
-        },
-        end_date: {
-          type: "string",
-          description: "End date in YYYY-MM-DD format (e.g., '2024-11-30')"
-        }
+        start_date: { type: "string", description: "Start date YYYY-MM-DD" },
+        end_date: { type: "string", description: "End date YYYY-MM-DD" }
       },
       required: ["start_date", "end_date"]
     }
   },
   {
-    name: "get_category_total",
-    description: "Get total amount spent on a specific expense category within a date range. Categories: fish, meat, chicken, milk, parotta, pathiri, dosa, appam, coconut, vegetables, rice, labor_manisha, labor_midhun, others",
+    name: "get_income_summary_by_category",
+    description: "Get income breakdown by category (Online/Offline) with percentages.",
     parameters: {
       type: "object",
       properties: {
-        category: {
-          type: "string",
-          description: "Category name (fish, meat, chicken, milk, parotta, pathiri, dosa, appam, coconut, vegetables, rice, labor_manisha, labor_midhun, others)"
-        },
-        start_date: {
-          type: "string",
-          description: "Start date in YYYY-MM-DD format"
-        },
-        end_date: {
-          type: "string",
-          description: "End date in YYYY-MM-DD format"
-        }
+        start_date: { type: "string", description: "Start date YYYY-MM-DD" },
+        end_date: { type: "string", description: "End date YYYY-MM-DD" }
       },
-      required: ["category", "start_date", "end_date"]
+      required: ["start_date", "end_date"]
     }
   },
   {
-    name: "get_recent_transactions",
-    description: "Get list of most recent days with transaction data. Useful for showing latest activity.",
+    name: "get_daily_trend",
+    description: "Get daily income, expense, and profit trend for recent days.",
     parameters: {
       type: "object",
       properties: {
-        limit: {
-          type: "number",
-          description: "Number of recent days to fetch (default: 7, max: 30)"
-        }
+        days_count: { type: "number", description: "Number of days (default 7)" }
       },
       required: []
     }
   },
   {
-    name: "get_top_expense_categories",
-    description: "Get top expense categories by amount for a date range with percentages. Useful for identifying where most money is spent.",
+    name: "get_month_summary",
+    description: "Get monthly financial summary with averages and profit margin.",
     parameters: {
       type: "object",
       properties: {
-        start_date: {
-          type: "string",
-          description: "Start date in YYYY-MM-DD format"
-        },
-        end_date: {
-          type: "string",
-          description: "End date in YYYY-MM-DD format"
-        },
-        top_n: {
-          type: "number",
-          description: "Number of top categories to return (default: 5)"
-        }
+        year: { type: "number", description: "Year (e.g., 2026)" },
+        month: { type: "number", description: "Month (1-12)" }
+      },
+      required: ["year", "month"]
+    }
+  },
+  {
+    name: "get_savings_rate",
+    description: "Get savings metrics including rate, total savings, and income/expense for a period.",
+    parameters: {
+      type: "object",
+      properties: {
+        start_date: { type: "string", description: "Start date YYYY-MM-DD" },
+        end_date: { type: "string", description: "End date YYYY-MM-DD" }
       },
       required: ["start_date", "end_date"]
     }
   },
   {
-    name: "get_income_breakdown",
-    description: "Get breakdown of online vs offline income for a date range with percentages.",
+    name: "get_top_spending_days",
+    description: "Get days with highest spending and top category for each day.",
     parameters: {
       type: "object",
       properties: {
-        start_date: {
-          type: "string",
-          description: "Start date in YYYY-MM-DD format"
-        },
-        end_date: {
-          type: "string",
-          description: "End date in YYYY-MM-DD format"
-        }
+        limit: { type: "number", description: "Number of days (default 5)" }
       },
-      required: ["start_date", "end_date"]
-    }
-  },
-  {
-    name: "compare_periods",
-    description: "Compare two date ranges to show growth or decline in income, expense, and profit.",
-    parameters: {
-      type: "object",
-      properties: {
-        period1_start: {
-          type: "string",
-          description: "Period 1 start date in YYYY-MM-DD format"
-        },
-        period1_end: {
-          type: "string",
-          description: "Period 1 end date in YYYY-MM-DD format"
-        },
-        period2_start: {
-          type: "string",
-          description: "Period 2 start date in YYYY-MM-DD format"
-        },
-        period2_end: {
-          type: "string",
-          description: "Period 2 end date in YYYY-MM-DD format"
-        }
-      },
-      required: ["period1_start", "period1_end", "period2_start", "period2_end"]
+      required: []
     }
   },
   {
     name: "add_income",
-    description: `⚠️ MANDATORY TOOL - MUST CALL IMMEDIATELY when user mentions income in ANY format:
-
-EXAMPLES TO DETECT & AUTO-CALL:
-- "1000 വരുമാനം" → add_income(offline_income: 1000, online_income: 0)
-- "income 1000" → add_income(offline_income: 1000, online_income: 0)
-- "phonepay 500" → add_income(online_income: 500, offline_income: 0)
-- "google pay 800" → add_income(online_income: 800, offline_income: 0)
-- "swiggy 1200" → add_income(online_income: 1200, offline_income: 0)
-- "zomato 900" → add_income(online_income: 900, offline_income: 0)
-- "offline 2000" → add_income(offline_income: 2000, online_income: 0)
-- "direct 1500" → add_income(offline_income: 1500, online_income: 0)
-- "swiggy 1000, offline 2000" → add_income(online_income: 1000, offline_income: 2000)
-- "5000" (just amount) → add_income(offline_income: 5000, online_income: 0)
-
-ONLINE KEYWORDS: swiggy, zomato, phonepay, phone pay, google pay, gpay, online, ഓൺലൈൻ, സ്വിഗ്ഗി, സൊമാറ്റോ
-OFFLINE KEYWORDS: offline, direct, cash, നേരിട്ട്, ഓഫ്‌ലൈൻ, കാഷ്
-
-⚠️ DEFAULT RULE: If no keyword specified, assume OFFLINE income!
-
-DO NOT write text - CALL THE TOOL IMMEDIATELY!`,
+    description: `⚠️ MANDATORY TOOL - Call when user adds income.
+    Maps to 'Online' or 'Offline' categories automatically.
+    - "phonepay 500" → add_income(online_income: 500)
+    - "cash 200" → add_income(offline_income: 200)`,
     parameters: {
       type: "object",
       properties: {
-        online_income: {
-          type: "number",
-          description: "Online income amount (Swiggy, Zomato, PhonePay, Google Pay, etc). Default 0 if not specified."
-        },
-        offline_income: {
-          type: "number",
-          description: "Offline income amount (direct sales, cash). Default 0 if not specified. If user only provides amount without keyword, use this field."
-        },
-        meals_sold: {
-          type: "number",
-          description: "Number of meals sold today. Optional."
-        },
-        date: {
-          type: "string",
-          description: "Date in YYYY-MM-DD format. Default to today if not specified."
-        }
+        online_income: { type: "number", description: "Amount from online sources" },
+        offline_income: { type: "number", description: "Amount from cash/direct" },
+        date: { type: "string", description: "YYYY-MM-DD, default today" },
+        meals_sold: { type: "number", description: "Meals count (optional)" }
       },
       required: []
     }
   },
   {
     name: "add_expense",
-    description: `⚠️ MANDATORY TOOL - MUST CALL IMMEDIATELY when user mentions expense in ANY format:
-
-EXAMPLES TO DETECT & AUTO-CALL:
-- "milk 100" → add_expense(category: "milk", amount: 100)
-- "മീൻ 500" → add_expense(category: "fish", amount: 500)
-- "meat-800" → add_expense(category: "meat", amount: 800)
-- "chicken 2kg 600" → add_expense(category: "chicken", amount: 600, quantity: "2kg")
-- "പാൽ 5 liters 200" → add_expense(category: "milk", amount: 200, quantity: "5 liters")
-- "parotta 50" → add_expense(category: "parotta", amount: 50)
-- "vegetables-300" → add_expense(category: "vegetables", amount: 300)
-- "gas 1500" → add_expense(category: "others", amount: 1500)
-- "100" (just amount, unknown item) → add_expense(category: "others", amount: 100)
-
-CATEGORY MAPPING (MUST USE THESE EXACT NAMES):
-മീൻ/fish → "fish"
-മാംസം/meat → "meat"
-chicken/ചിക്കൻ → "chicken"
-പാൽ/milk → "milk"
-parotta/പറോട്ട → "parotta"
-pathiri/പത്തിരി → "pathiri"
-dosa/ദോശ → "dosa"
-appam/അപ്പം → "appam"
-തേങ്ങ/coconut → "coconut"
-പച്ചക്കറി/vegetables → "vegetables"
-rice/അരി → "rice"
-labor manisha/തൊഴിലാളി മനീഷ → "labor_manisha"
-labor midhun/തൊഴിലാളി മിധുൻ → "labor_midhun"
-gas/ഗ്യാസ്/electricity/കറന്റ്/water/വെള്ളം/rent/വാടക → "others"
-മറ്റുള്ളവ/others/unknown → "others"
-
-⚠️ DEFAULT RULE: If category not recognized, use "others"!
-
-DO NOT write text - CALL THE TOOL IMMEDIATELY!`,
+    description: `⚠️ MANDATORY TOOL - Call when user adds expense.
+    Category is DYNAMIC - if new, it will be created.
+    - "fish 500" → add_expense(category: "Fish", amount: 500)
+    - "newitem 100" → add_expense(category: "NewItem", amount: 100)`,
     parameters: {
       type: "object",
       properties: {
-        category: {
-          type: "string",
-          description: "Expense category: fish, meat, chicken, milk, parotta, pathiri, dosa, appam, coconut, vegetables, rice, labor_manisha, labor_midhun, others. Default to 'others' if not specified or unknown."
-        },
-        amount: {
-          type: "number",
-          description: "Amount spent"
-        },
-        quantity: {
-          type: "string",
-          description: "Quantity purchased (e.g., '2kg', '5 liters'). Optional."
-        },
-        date: {
-          type: "string",
-          description: "Date in YYYY-MM-DD format. Default to today if not specified."
-        }
+        category: { type: "string", description: "Expense category name" },
+        amount: { type: "number" },
+        quantity: { type: "string", description: "e.g. '2kg'" },
+        date: { type: "string", description: "YYYY-MM-DD, default today" }
       },
-      required: []
+      required: ["category", "amount"]
     }
   }
 ];
@@ -899,21 +765,21 @@ DO NOT write text - CALL THE TOOL IMMEDIATELY!`,
 function parseDate(dateStr: string): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const lowerDate = dateStr.toLowerCase().trim();
 
   // Handle "today"
   if (lowerDate === 'today') {
     return today.toISOString().split('T')[0];
   }
-  
+
   // Handle "yesterday"
   if (lowerDate === 'yesterday') {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     return yesterday.toISOString().split('T')[0];
   }
-  
+
   // Handle "last monday", "last tuesday", etc.
   const lastDayMatch = lowerDate.match(/last\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
   if (lastDayMatch) {
@@ -927,26 +793,26 @@ function parseDate(dateStr: string): string {
       'friday': 5,
       'saturday': 6
     };
-    
+
     const targetDayNum = dayMap[targetDay];
     const currentDayNum = today.getDay();
-    
+
     // Calculate days to go back
     let daysBack = currentDayNum - targetDayNum;
     if (daysBack <= 0) {
       daysBack += 7; // Go to previous week
     }
-    
+
     const lastDay = new Date(today);
     lastDay.setDate(lastDay.getDate() - daysBack);
     return lastDay.toISOString().split('T')[0];
   }
-  
+
   // Handle "this week", "last week"
   if (lowerDate === 'this week' || lowerDate === 'last week') {
     const currentDayNum = today.getDay();
     const daysFromMonday = currentDayNum === 0 ? 6 : currentDayNum - 1; // Monday = 0
-    
+
     const monday = new Date(today);
     if (lowerDate === 'this week') {
       monday.setDate(monday.getDate() - daysFromMonday);
@@ -955,12 +821,12 @@ function parseDate(dateStr: string): string {
     }
     return monday.toISOString().split('T')[0];
   }
-  
+
   // If it's already in YYYY-MM-DD format, return as is
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return dateStr;
   }
-  
+
   // Handle dates with Malayalam month names (e.g., "നവംബർ 21" or "21 നവംബർ")
   const malayalamMonths: { [key: string]: number } = {
     'ജനുവരി': 1, 'january': 1,
@@ -976,7 +842,7 @@ function parseDate(dateStr: string): string {
     'നവംബർ': 11, 'november': 11,
     'ഡിസംബർ': 12, 'december': 12
   };
-  
+
   // Try to extract month and day from various formats
   for (const [monthName, monthNum] of Object.entries(malayalamMonths)) {
     // Format: "നവംബർ 21" or "November 21"
@@ -987,7 +853,7 @@ function parseDate(dateStr: string): string {
       const year = today.getFullYear();
       return `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
-    
+
     // Format: "21 നവംബർ" or "21 November"
     const regex2 = new RegExp(`(\\d{1,2})\\s+${monthName}`, 'i');
     const match2 = dateStr.match(regex2);
@@ -997,321 +863,191 @@ function parseDate(dateStr: string): string {
       return `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
   }
-  
+
   // Try to parse as a date string (e.g., "2024-11-21", "11/21/2024")
   const parsedDate = new Date(dateStr);
   if (!isNaN(parsedDate.getTime())) {
     return parsedDate.toISOString().split('T')[0];
   }
-  
+
   // If nothing matches, return the original string (might be YYYY-MM-DD already)
   return dateStr;
 }
 
 // Execute tool function
-async function executeTool(toolName: string, args: any, supabase: any): Promise<any> {
+async function executeTool(toolName: string, args: any, supabase: any, userId: string): Promise<any> {
   console.log(`Executing tool: ${toolName}`, args);
 
   try {
     switch (toolName) {
-      case "get_daily_summary": {
-        const date = parseDate(args.date);
-        const { data, error } = await supabase.rpc('get_daily_data', {
-          target_date: date
-        });
-        if (error) throw error;
-        return data && data.length > 0 ? data[0] : { error: "No data found for this date" };
-      }
-
-      case "get_range_summary": {
+      case "get_expense_summary_by_category": {
         const startDate = parseDate(args.start_date);
         const endDate = parseDate(args.end_date);
-        const { data, error } = await supabase.rpc('get_range_data', {
-          start_date: startDate,
-          end_date: endDate
-        });
-        if (error) throw error;
-        return data && data.length > 0 ? data[0] : { error: "No data found for this range" };
-      }
-
-      case "get_category_total": {
-        const startDate = parseDate(args.start_date);
-        const endDate = parseDate(args.end_date);
-        const { data, error } = await supabase.rpc('get_category_total', {
-          category_name: args.category,
-          start_date: startDate,
-          end_date: endDate
-        });
-        if (error) throw error;
-        return data && data.length > 0 ? data[0] : { error: "No data found" };
-      }
-
-      case "get_recent_transactions": {
-        const limit = args.limit || 7;
-        const { data, error } = await supabase.rpc('get_recent_transactions', {
-          days_limit: Math.min(limit, 30)
+        const { data, error } = await supabase.rpc('get_expense_summary_by_category', {
+          p_user_id: userId,
+          p_start_date: startDate,
+          p_end_date: endDate
         });
         if (error) throw error;
         return data || [];
       }
 
-      case "get_top_expense_categories": {
+      case "get_income_summary_by_category": {
         const startDate = parseDate(args.start_date);
         const endDate = parseDate(args.end_date);
-        const topN = args.top_n || 5;
-        const { data, error } = await supabase.rpc('get_top_expense_categories', {
-          start_date: startDate,
-          end_date: endDate,
-          top_n: topN
+        const { data, error } = await supabase.rpc('get_income_summary_by_category', {
+          p_user_id: userId,
+          p_start_date: startDate,
+          p_end_date: endDate
         });
         if (error) throw error;
         return data || [];
       }
 
-      case "get_income_breakdown": {
+      case "get_daily_trend": {
+        const daysCount = args.days_count || 7;
+        const { data, error } = await supabase.rpc('get_daily_trend', {
+          p_user_id: userId,
+          p_days_count: daysCount
+        });
+        if (error) throw error;
+        return data || [];
+      }
+
+      case "get_month_summary": {
+        const { data, error } = await supabase.rpc('get_month_summary', {
+          p_user_id: userId,
+          p_year: args.year,
+          p_month: args.month
+        });
+        if (error) throw error;
+        return data && data.length > 0 ? data[0] : { error: "No data found for this month" };
+      }
+
+      case "get_savings_rate": {
         const startDate = parseDate(args.start_date);
         const endDate = parseDate(args.end_date);
-        const { data, error } = await supabase.rpc('get_income_breakdown', {
-          start_date: startDate,
-          end_date: endDate
+        const { data, error } = await supabase.rpc('get_savings_rate', {
+          p_user_id: userId,
+          p_start_date: startDate,
+          p_end_date: endDate
         });
         if (error) throw error;
         return data && data.length > 0 ? data[0] : { error: "No data found" };
       }
 
-      case "compare_periods": {
-        const { data, error } = await supabase.rpc('compare_date_ranges', {
-          start_date1: parseDate(args.period1_start),
-          end_date1: parseDate(args.period1_end),
-          start_date2: parseDate(args.period2_start),
-          end_date2: parseDate(args.period2_end)
+      case "get_top_spending_days": {
+        const limit = args.limit || 5;
+        const { data, error } = await supabase.rpc('get_top_spending_days', {
+          p_user_id: userId,
+          p_limit: limit
         });
         if (error) throw error;
-        return data && data.length > 0 ? data[0] : { error: "No data found" };
+        return data || [];
       }
 
       case "add_income": {
-        console.log('💰 add_income tool called with args:', args);
-        
         const date = args.date ? parseDate(args.date) : new Date().toISOString().split('T')[0];
-        
-        // Handle defaults: if neither specified, default to offline
-        let onlineIncome = args.online_income || 0;
-        let offlineIncome = args.offline_income || 0;
-        
-        // If both are 0, there might be an issue - but we'll let it pass
-        if (onlineIncome === 0 && offlineIncome === 0) {
-          console.warn('⚠️ Both online and offline income are 0');
-        }
-        
-        const totalIncome = onlineIncome + offlineIncome;
+        const onlineIncome = args.online_income || 0;
+        const offlineIncome = args.offline_income || 0;
         const mealsSold = args.meals_sold || 0;
 
-        console.log(`📅 Date: ${date}, Online: ${onlineIncome}, Offline: ${offlineIncome}, Total: ${totalIncome}`);
+        // Ensure categories exist
+        const ensureCategory = async (name: string) => {
+          // Try to select
+          let { data } = await supabase.from('income_categories')
+            .select('id').eq('user_id', userId).ilike('name', name).maybeSingle();
 
-        // Insert or update income for the date
-        const { data: existingData, error: selectError } = await supabase
-          .from('daily_data')
-          .select('*')
-          .eq('date', date)
-          .single();
+          if (!data) {
+            const { data: newData, error } = await supabase.from('income_categories')
+              .insert({ user_id: userId, name: name }).select('id').single();
+            if (error) {
+              // Race condition/conflict check
+              const { data: retryData } = await supabase.from('income_categories')
+                .select('id').eq('user_id', userId).ilike('name', name).maybeSingle();
+              if (retryData) return retryData.id;
+              throw error;
+            }
+            data = newData;
+          }
+          return data.id;
+        };
 
-        if (selectError && selectError.code !== 'PGRST116') {
-          console.error('❌ Error checking existing data:', selectError);
-          throw selectError;
+        const onlineCatId = await ensureCategory('Online');
+        const offlineCatId = await ensureCategory('Offline');
+
+        if (onlineIncome > 0) {
+          await supabase.from('incomes').insert({
+            user_id: userId, category_id: onlineCatId, amount: onlineIncome, date, description: 'Online Income via AI'
+          });
+        }
+        if (offlineIncome > 0) {
+          await supabase.from('incomes').insert({
+            user_id: userId, category_id: offlineCatId, amount: offlineIncome, date, description: 'Offline Income via AI'
+          });
         }
 
-        if (existingData) {
-          console.log('📝 Updating existing record:', existingData);
-          
-          // Update existing record
-          const newOnline = existingData.online_income + onlineIncome;
-          const newOffline = existingData.offline_income + offlineIncome;
-          const newTotal = existingData.total_income + totalIncome;
-          
-          const { data, error } = await supabase
-            .from('daily_data')
-            .update({
-              online_income: newOnline,
-              offline_income: newOffline,
-              total_income: newTotal,
-              meals_sold: mealsSold > 0 ? mealsSold : existingData.meals_sold,
-              profit: newTotal - existingData.total_expense
-            })
-            .eq('date', date)
-            .select()
-            .single();
-          
-          if (error) {
-            console.error('❌ Update error:', error);
-            throw error;
+        // Update daily_summary for meals_count only (logic kept for backward compat or if summary is used)
+        // With dynamic schema, summary is usually calculated on fly, but meals_count needs storage.
+        // Let's assume daily_summary still exists for meals_count.
+        if (mealsSold > 0) {
+          const { data: existing } = await supabase.from('daily_summary')
+            .select('*').eq('date', date).eq('user_id', userId).maybeSingle();
+
+          if (existing) {
+            await supabase.from('daily_summary').update({ meals_count: (existing.meals_count || 0) + mealsSold })
+              .eq('date', date).eq('user_id', userId);
+          } else {
+            await supabase.from('daily_summary').insert({
+              user_id: userId, date, meals_count: mealsSold, total_income: 0, total_expense: 0, profit: 0
+            });
           }
-          
-          console.log('✅ Income updated successfully:', data);
-          
-          return { 
-            success: true, 
-            message: "സേവ് ചെയ്തു! വരുമാനം ചേർത്തു!", 
-            data,
-            online_income: newOnline,
-            offline_income: newOffline,
-            total_income: newTotal,
-            added_online: onlineIncome,
-            added_offline: offlineIncome
-          };
-        } else {
-          console.log('📝 Creating new record');
-          
-          // Create new record
-          const { data, error } = await supabase
-            .from('daily_data')
-            .insert({
-              date,
-              online_income: onlineIncome,
-              offline_income: offlineIncome,
-              total_income: totalIncome,
-              meals_sold: mealsSold,
-              total_expense: 0,
-              profit: totalIncome
-            })
-            .select()
-            .single();
-          
-          if (error) {
-            console.error('❌ Insert error:', error);
-            throw error;
-          }
-          
-          console.log('✅ Income inserted successfully:', data);
-          
-          return { 
-            success: true, 
-            message: "സേവ് ചെയ്തു! വരുമാനം ചേർത്തു!", 
-            data,
-            online_income: onlineIncome,
-            offline_income: offlineIncome,
-            total_income: totalIncome,
-            added_online: onlineIncome,
-            added_offline: offlineIncome
-          };
         }
+
+        const total = onlineIncome + offlineIncome;
+        return { success: true, message: `Added income: ${total}`, total_income: total };
       }
 
       case "add_expense": {
-        console.log('💸 add_expense tool called with args:', args);
-        
         const date = args.date ? parseDate(args.date) : new Date().toISOString().split('T')[0];
-        
-        // Default category to "others" if not specified or invalid
-        const category = args.category || "others";
+        const categoryName = args.category || "Others";
         const amount = args.amount;
-        
-        // Validate amount exists
-        if (!amount || amount <= 0) {
-          console.error('❌ Invalid amount:', amount);
-          throw new Error('Amount must be a positive number');
-        }
-        
-        const quantity = args.quantity || '';
+        const quantity = args.quantity;
 
-        console.log(`📅 Date: ${date}, Category: ${category}, Amount: ${amount}, Quantity: ${quantity}`);
+        // Get or Create Category
+        let categoryId;
+        let { data: catData } = await supabase.from('expense_categories')
+          .select('id').eq('user_id', userId).ilike('name', categoryName).maybeSingle();
 
-        // First, add to expense table (singular!)
-        const { error: expenseError } = await supabase
-          .from('expense')
-          .insert({
-            date,
-            category,
-            amount,
-            quantity,
-            description: quantity ? `${quantity} ${category}` : category
-          });
-
-        if (expenseError) {
-          console.error('❌ Expense insert error:', expenseError);
-          throw expenseError;
-        }
-        
-        console.log('✅ Expense inserted to expense table');
-
-        // Update daily_data total_expense
-        const { data: existingData, error: selectError } = await supabase
-          .from('daily_data')
-          .select('*')
-          .eq('date', date)
-          .single();
-
-        if (selectError && selectError.code !== 'PGRST116') {
-          console.error('❌ Error checking daily_data:', selectError);
-          throw selectError;
-        }
-
-        if (existingData) {
-          console.log('📝 Updating daily_data:', existingData);
-          
-          // Update existing record
-          const newTotalExpense = existingData.total_expense + amount;
-          const { data, error } = await supabase
-            .from('daily_data')
-            .update({
-              total_expense: newTotalExpense,
-              profit: existingData.total_income - newTotalExpense
-            })
-            .eq('date', date)
-            .select()
-            .single();
-          
-          if (error) {
-            console.error('❌ daily_data update error:', error);
-            throw error;
-          }
-          
-          console.log('✅ Expense updated in daily_data:', data);
-          
-          return { 
-            success: true, 
-            message: "സേവ് ചെയ്തു! ചെലവ് ചേർത്തു!", 
-            data,
-            category,
-            amount,
-            quantity,
-            total_expense: newTotalExpense
-          };
+        if (catData) {
+          categoryId = catData.id;
         } else {
-          console.log('📝 Creating new daily_data record');
-          
-          // Create new record
-          const { data, error } = await supabase
-            .from('daily_data')
-            .insert({
-              date,
-              online_income: 0,
-              offline_income: 0,
-              total_income: 0,
-              total_expense: amount,
-              profit: -amount,
-              meals_sold: 0
-            })
-            .select()
-            .single();
-          
+          // Create
+          const { data: newCat, error } = await supabase.from('expense_categories')
+            .insert({ user_id: userId, name: categoryName }).select('id').single();
           if (error) {
-            console.error('❌ daily_data insert error:', error);
-            throw error;
+            // Retry fetch if parallel insert happened
+            const { data: retry } = await supabase.from('expense_categories')
+              .select('id').eq('user_id', userId).ilike('name', categoryName).maybeSingle();
+            if (retry) categoryId = retry.id;
+            else throw error;
+          } else {
+            categoryId = newCat.id;
           }
-          
-          console.log('✅ Expense created in daily_data:', data);
-          
-          return { 
-            success: true, 
-            message: "സേവ് ചെയ്തു! ചെലവ് ചേർത്തു!", 
-            data,
-            category,
-            amount,
-            quantity,
-            total_expense: amount
-          };
         }
+
+        const { error } = await supabase.from('expenses').insert({
+          user_id: userId,
+          category_id: categoryId,
+          amount,
+          date,
+          quantity,
+          description: 'AI Entry'
+        });
+
+        if (error) throw error;
+
+        return { success: true, message: `Added expense: ${amount} for ${categoryName}`, total_expense: amount };
       }
 
       default:
@@ -1330,7 +1066,7 @@ async function callGemini(message: string, conversationHistory: any[] = [], syst
     throw new Error('GEMINI_API_KEY not configured');
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 
   // Build conversation with system prompt (use provided or default)
   const contents = [
@@ -1391,7 +1127,50 @@ serve(async (req) => {
   }
 
   try {
-    const { message, userId, contextInfo, conversationHistory: clientHistory } = await req.json();
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      },
+      db: {
+        schema: 'public'
+      }
+    });
+
+    // Verify user is authenticated
+    const authHeader = req.headers.get('Authorization');
+    let authenticatedUserId: string | null = null;
+
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+      if (!authError && user) {
+        authenticatedUserId = user.id;
+      }
+    }
+
+    const { message, userId: bodyUserId, contextInfo, conversationHistory: clientHistory } = await req.json();
+
+    // Use authenticated user ID if available, otherwise check body (for legacy/testing)
+    let effectiveUserId = authenticatedUserId;
+    if (!effectiveUserId) {
+      if (bodyUserId) {
+        console.warn('⚠️ No valid auth token provided. Using user_id from body if present (INSECURE for production)');
+        effectiveUserId = bodyUserId;
+      }
+    }
+
+    if (!effectiveUserId) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: User ID required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!message) {
       return new Response(
@@ -1402,7 +1181,7 @@ serve(async (req) => {
 
     // Build enhanced system prompt with context
     let enhancedSystemPrompt = SYSTEM_PROMPT;
-    
+
     if (contextInfo) {
       enhancedSystemPrompt = `${SYSTEM_PROMPT}
 
@@ -1441,37 +1220,24 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
 `;
     }
 
-    // Initialize Supabase client with service role (bypasses RLS)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      },
-      db: {
-        schema: 'public'
-      }
-    });
 
-    console.log('✅ Supabase client initialized with SERVICE_ROLE_KEY (RLS bypassed)');
 
     // Load recent conversation history from database (last 10 messages)
     let conversationHistory = [];
-    
-    if (userId) {
+
+    if (effectiveUserId) {
       try {
         const { data: historyData } = await supabase
           .from('chat_messages')
           .select('message, response, created_at')
-          .eq('user_id', userId)
+          .eq('user_id', effectiveUserId)
           .order('created_at', { ascending: false })
           .limit(5); // Last 5 conversations (10 messages total)
 
         if (historyData && historyData.length > 0) {
           // Reverse to get chronological order
           const reversedHistory = historyData.reverse();
-          
+
           // Build conversation history for Gemini
           for (const chat of reversedHistory) {
             conversationHistory.push({
@@ -1483,7 +1249,7 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
               parts: [{ text: chat.response }]
             });
           }
-          
+
           console.log(`Loaded ${conversationHistory.length / 2} previous conversations`);
         }
       } catch (err) {
@@ -1500,7 +1266,7 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
 
     // First call to Gemini with conversation history and enhanced system prompt
     let geminiResponse = await callGemini(message, conversationHistory, enhancedSystemPrompt);
-    
+
     // Handle potential function calls
     let maxIterations = 5; // Prevent infinite loops
     let iteration = 0;
@@ -1524,7 +1290,7 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
 
       if (functionCalls.length > 0) {
         console.log(`✅ Found ${functionCalls.length} function call(s)!`);
-        
+
         // Execute all function calls
         const functionResponses = [];
 
@@ -1535,9 +1301,9 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
           console.log(`🔧 Calling tool: ${toolName}`, toolArgs);
 
           // Execute tool
-          const toolResult = await executeTool(toolName, toolArgs, supabase);
+          const toolResult = await executeTool(toolName, toolArgs, supabase, effectiveUserId);
           console.log(`✅ Tool result:`, toolResult);
-          
+
           toolCalls.push({ name: toolName, args: toolArgs, result: toolResult });
 
           functionResponses.push({
@@ -1564,7 +1330,7 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
 
       } else {
         console.log('❌ No function calls found, extracting text response');
-        
+
         // No more function calls, extract final text response
         const textParts = parts.filter((part: any) => part.text);
         finalResponse = textParts.map((part: any) => part.text).join(' ');
@@ -1578,7 +1344,7 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
     if (!finalResponse) {
       // Fallback response
       const isEnglish = /^[a-zA-Z0-9\s\?\!\.]+$/.test(message);
-      finalResponse = isEnglish 
+      finalResponse = isEnglish
         ? "I apologize, I couldn't process your request properly. Could you please rephrase?"
         : "ക്ഷമിക്കണം, നിങ്ങളുടെ അഭ്യർത്ഥന ശരിയായി പ്രോസസ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും പറയാമോ?";
     }
@@ -1587,7 +1353,7 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
     try {
       const detectedLanguage = /[\u0D00-\u0D7F]/.test(message) ? 'ml' : 'en';
       await supabase.from('chat_messages').insert({
-        user_id: userId || null,
+        user_id: effectiveUserId || null,
         message: message,
         response: finalResponse,
         language: detectedLanguage
@@ -1598,13 +1364,13 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
     }
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         reply: finalResponse,
         toolsUsed: toolCalls.map(t => t.name)
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
 
@@ -1619,9 +1385,9 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
 
     return new Response(
       JSON.stringify(errorResponse),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

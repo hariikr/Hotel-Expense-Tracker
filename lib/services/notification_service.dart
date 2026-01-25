@@ -93,53 +93,60 @@ class NotificationService {
     // Get reminder time from settings
     final reminderHour = await _settingsService.getReminderTimeHour();
 
-    // Schedule daily reminder with professional styling
-    await _notifications.zonedSchedule(
-      _dailyReminderId,
-      '📊 Daily Entry Reminder',
-      'Don\'t forget to log today\'s income and expenses!',
-      _nextInstanceOfTime(reminderHour, 0),
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_reminder',
-          'Daily Reminders',
-          channelDescription: 'Daily reminder to add income and expenses',
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-          enableVibration: true,
-          vibrationPattern: Int64List.fromList(
-              [0, 500, 200, 500]), // Professional vibration pattern
-          enableLights: true,
-          color: const Color(0xFF667EEA),
-          ledColor: const Color(0xFF667EEA),
-          ledOnMs: 1000,
-          ledOffMs: 500,
-          playSound: true,
-          // Using default system notification sound
-          styleInformation: const BigTextStyleInformation(
-            'Tap to open Hotel Expense Tracker and add your daily entries. Stay on top of your finances!',
-            contentTitle: '📊 Daily Entry Reminder',
-            summaryText: 'Hotel Expense Tracker',
+    try {
+      // Schedule daily reminder with professional styling
+      // Using inexactAllowWhileIdle to avoid PlatformException on Android 14+
+      await _notifications.zonedSchedule(
+        _dailyReminderId,
+        '📊 Daily Entry Reminder',
+        'Don\'t forget to log today\'s income and expenses!',
+        _nextInstanceOfTime(reminderHour, 0),
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_reminder',
+            'Daily Reminders',
+            channelDescription: 'Daily reminder to add income and expenses',
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList(
+                [0, 500, 200, 500]), // Professional vibration pattern
+            enableLights: true,
+            color: const Color(0xFF667EEA),
+            ledColor: const Color(0xFF667EEA),
+            ledOnMs: 1000,
+            ledOffMs: 500,
+            playSound: true,
+            // Using default system notification sound
+            styleInformation: const BigTextStyleInformation(
+              'Tap to open Hotel Expense Tracker and add your daily entries. Stay on top of your finances!',
+              contentTitle: '📊 Daily Entry Reminder',
+              summaryText: 'Hotel Expense Tracker',
+            ),
+            category: AndroidNotificationCategory.reminder,
+            visibility: NotificationVisibility.public,
+            ticker: 'Daily reminder to log expenses',
           ),
-          category: AndroidNotificationCategory.reminder,
-          visibility: NotificationVisibility.public,
-          ticker: 'Daily reminder to log expenses',
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+            // Using default iOS notification sound
+            interruptionLevel: InterruptionLevel.active,
+            threadIdentifier: 'daily_reminder',
+          ),
         ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          // Using default iOS notification sound
-          interruptionLevel: InterruptionLevel.active,
-          threadIdentifier: 'daily_reminder',
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e) {
+      print('Error scheduling daily reminder: $e');
+      // If it still fails, fall back to a simple show (though it won't be scheduled)
+      // or just log it to avoid crashing the app
+    }
   }
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
@@ -173,52 +180,56 @@ class NotificationService {
 
     await _notifications.cancel(_weeklySummaryId);
 
-    // Schedule for Sunday at 8 PM with professional styling
-    await _notifications.zonedSchedule(
-      _weeklySummaryId,
-      '📈 Weekly Performance Summary',
-      'Tap to see this week\'s performance report',
-      _nextInstanceOfSunday(20, 0), // 8 PM Sunday
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'weekly_summary',
-          'Weekly Summary',
-          channelDescription: 'Weekly performance summaries',
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-          enableVibration: true,
-          vibrationPattern: Int64List.fromList([0, 400, 200, 400, 200, 400]),
-          enableLights: true,
-          color: const Color(0xFF764BA2),
-          ledColor: const Color(0xFF764BA2),
-          ledOnMs: 1000,
-          ledOffMs: 500,
-          playSound: true,
-          // Using default system notification sound
-          styleInformation: const BigTextStyleInformation(
-            'Check out your weekly performance! See your total income, expenses, and profit for this week.',
-            contentTitle: '📈 Weekly Performance Summary',
-            summaryText: 'Hotel Expense Tracker',
+    try {
+      // Schedule for Sunday at 8 PM with professional styling
+      await _notifications.zonedSchedule(
+        _weeklySummaryId,
+        '📈 Weekly Performance Summary',
+        'Tap to see this week\'s performance report',
+        _nextInstanceOfSunday(20, 0), // 8 PM Sunday
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'weekly_summary',
+            'Weekly Summary',
+            channelDescription: 'Weekly performance summaries',
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList([0, 400, 200, 400, 200, 400]),
+            enableLights: true,
+            color: const Color(0xFF764BA2),
+            ledColor: const Color(0xFF764BA2),
+            ledOnMs: 1000,
+            ledOffMs: 500,
+            playSound: true,
+            // Using default system notification sound
+            styleInformation: const BigTextStyleInformation(
+              'Check out your weekly performance! See your total income, expenses, and profit for this week.',
+              contentTitle: '📈 Weekly Performance Summary',
+              summaryText: 'Hotel Expense Tracker',
+            ),
+            category: AndroidNotificationCategory.status,
+            visibility: NotificationVisibility.public,
           ),
-          category: AndroidNotificationCategory.status,
-          visibility: NotificationVisibility.public,
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+            // Using default iOS notification sound
+            interruptionLevel: InterruptionLevel.timeSensitive,
+            threadIdentifier: 'weekly_summary',
+          ),
         ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          // Using default iOS notification sound
-          interruptionLevel: InterruptionLevel.timeSensitive,
-          threadIdentifier: 'weekly_summary',
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-      payload: 'weekly_summary',
-    );
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        payload: 'weekly_summary',
+      );
+    } catch (e) {
+      print('Error scheduling weekly summary: $e');
+    }
   }
 
   tz.TZDateTime _nextInstanceOfSunday(int hour, int minute) {

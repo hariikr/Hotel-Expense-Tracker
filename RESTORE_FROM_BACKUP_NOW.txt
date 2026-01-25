@@ -1,0 +1,50 @@
+=========================================
+RESTORE YOUR DATA FROM SUPABASE BACKUP
+=========================================
+
+SUPABASE FREE TIER HAS DAILY BACKUPS!
+They keep backups for 7 DAYS!
+
+RESTORE NOW - FOLLOW THESE STEPS:
+
+1. Go to: https://supabase.com/dashboard/project/khpeuremcbkpdmombtkg
+
+2. Click "Database" in the left sidebar
+
+3. Look for "Backups" or "Backup & Restore" tab
+   (It might be under Database > Settings or Database > Backups)
+
+4. You'll see daily backups with dates/times
+
+5. Find the backup from BEFORE you started migrations today
+   (Look for yesterday's backup or earlier this week)
+
+6. Click "Restore" or "Download" next to that backup
+
+7. Confirm the restoration
+
+8. Wait 2-5 minutes
+
+9. Your data will be back!
+
+=========================================
+
+IF YOU DON'T SEE BACKUPS TAB:
+
+The free tier DOES have them, but location varies:
+- Try: Database > Settings > Backups
+- Try: Database > Backups
+- Try: Settings > Database > Backup
+
+=========================================
+
+ALTERNATIVE - DOWNLOAD CURRENT DATABASE:
+
+If you want to save what's there now first:
+1. Database > Settings
+2. Click "Download backup"
+3. Save the file
+
+Then restore from automatic backup!
+
+=========================================

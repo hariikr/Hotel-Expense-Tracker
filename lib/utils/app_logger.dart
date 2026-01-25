@@ -37,7 +37,8 @@ class AppLogger {
     );
   }
 
-  static void functionEntry(String functionName, {String tag = _tag, Map<String, dynamic>? params}) {
+  static void functionEntry(String functionName,
+      {String tag = _tag, Map<String, dynamic>? params}) {
     String logMessage = '→ $functionName';
     if (params != null && params.isNotEmpty) {
       logMessage += '(${_formatParams(params)})';
@@ -49,7 +50,8 @@ class AppLogger {
     );
   }
 
-  static void functionExit(String functionName, {String tag = _tag, dynamic result}) {
+  static void functionExit(String functionName,
+      {String tag = _tag, dynamic result}) {
     String logMessage = '← $functionName';
     if (result != null) {
       logMessage += ' result: $result';
@@ -69,7 +71,8 @@ class AppLogger {
     return paramStrings.join(', ');
   }
 
-  static void networkCall(String method, String url, {String tag = _tag, dynamic data}) {
+  static void networkCall(String method, String url,
+      {String tag = _tag, dynamic data}) {
     developer.log(
       '🌐 $method $url ${data != null ? 'with data: $data' : ''}',
       name: tag,
@@ -77,7 +80,8 @@ class AppLogger {
     );
   }
 
-  static void databaseOperation(String operation, String table, {String tag = _tag, dynamic criteria}) {
+  static void databaseOperation(String operation, String table,
+      {String tag = _tag, dynamic criteria}) {
     developer.log(
       '🗄️ $operation on $table ${criteria != null ? 'with criteria: $criteria' : ''}',
       name: tag,

@@ -4,8 +4,37 @@ import 'package:intl/intl.dart';
 /// Service to handle AI chat interactions
 class AiService {
   final SupabaseClient _supabase;
+  // We'll lazy load or inject AuthService properly in a real DI setup,
+  // but for now we can access it or rely on SupabaseClient
 
   AiService(this._supabase);
+
+  /// Get currently authenticated user info if available
+  Future<Map<String, String?>> _getUserProfileContext() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return {};
+
+    try {
+      final profile = await _supabase
+          .from('profiles')
+          .select('full_name, business_name, business_type')
+          .eq('id', user.id)
+          .maybeSingle(); // Changed to maybeSingle to avoid exceptions if no profile
+
+      if (profile != null) {
+        return {
+          'userName': profile['full_name'] as String?,
+          'businessName': profile['business_name'] as String?,
+          'businessType': profile['business_type'] as String?,
+          'userId': user.id,
+        };
+      }
+    } catch (e) {
+      print('Error fetching user profile for AI context: $e');
+    }
+
+    return {'userId': user.id};
+  }
 
   /// Generate rich contextual information for AI
   Map<String, dynamic> _getContextualInfo() {
@@ -66,7 +95,8 @@ class AiService {
       'year': now.year,
       'businessTip': businessTip,
       'role': 'AI assistant for hotel expense tracking and business guidance',
-      'userRole': 'Hotel/business owner entrepreneur mother',
+      // Base defaults, will be overridden by user profile if available
+      'userRole': 'Hotel/business owner',
       'tone':
           'Friendly, supportive, educational, encouraging like a business mentor',
     };
@@ -117,18 +147,43 @@ class AiService {
       // Get rich contextual information
       final contextInfo = _getContextualInfo();
 
+      // Add user profile info
+      final userProfile = await _getUserProfileContext();
+      contextInfo.addAll(userProfile);
+
+      // Ensure we have a valid userId from somewhere
+      final effectiveUserId =
+          userId ?? userProfile['userId'] ?? _supabase.auth.currentUser?.id;
+
+      // Get the current user's session token for authentication
+      final session = _supabase.auth.currentSession;
+      final accessToken = session?.accessToken;
+
+      if (accessToken == null || effectiveUserId == null) {
+        throw Exception(
+            'Authentication required. Please log in again.\n\nപ്രാമാണീകരണം ആവശ്യമാണ്. ദയവായി വീണ്ടും ലോഗിൻ ചെയ്യുക.');
+      }
+
+      print('🔐 Auth token available: ${accessToken.isNotEmpty}');
+      print('👤 User ID: $effectiveUserId');
+
       // Call the Edge Function with conversation history and context
       final response = await _supabase.functions.invoke(
         'ai-chat',
         body: {
           'message': message,
-          'userId': userId,
+          'userId': effectiveUserId,
           'contextInfo':
-              contextInfo, // Rich context about time, date, business tips
+              contextInfo, // Rich context about time, date, business tips AND user profile
           if (conversationHistory != null && conversationHistory.isNotEmpty)
             'conversationHistory': conversationHistory,
         },
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+        },
       );
+
+      print('📡 Response status: ${response.status}');
 
       // Check for errors
       if (response.status != 200) {
