@@ -101,4 +101,42 @@ class TransactionRepository {
     if (userId == null) throw Exception('User not logged in');
     await _supabaseService.incomes.delete().eq('id', id).eq('user_id', userId);
   }
+
+  // --- All-time totals ---
+  Future<double> getTotalExpenseAmount() async {
+    try {
+      final userId = _supabaseService.currentUserId;
+      if (userId == null) throw Exception('User not logged in');
+
+      final response = await _supabaseService.expenses
+          .select('amount')
+          .eq('user_id', userId);
+
+      double total = 0;
+      for (var row in (response as List)) {
+        total += (row['amount'] as num).toDouble();
+      }
+      return total;
+    } catch (e) {
+      throw Exception('Failed to fetch total expenses: $e');
+    }
+  }
+
+  Future<double> getTotalIncomeAmount() async {
+    try {
+      final userId = _supabaseService.currentUserId;
+      if (userId == null) throw Exception('User not logged in');
+
+      final response =
+          await _supabaseService.incomes.select('amount').eq('user_id', userId);
+
+      double total = 0;
+      for (var row in (response as List)) {
+        total += (row['amount'] as num).toDouble();
+      }
+      return total;
+    } catch (e) {
+      throw Exception('Failed to fetch total incomes: $e');
+    }
+  }
 }

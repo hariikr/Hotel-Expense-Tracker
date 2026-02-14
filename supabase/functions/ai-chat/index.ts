@@ -884,9 +884,9 @@ async function executeTool(toolName: string, args: any, supabase: any, userId: s
         const startDate = parseDate(args.start_date);
         const endDate = parseDate(args.end_date);
         const { data, error } = await supabase.rpc('get_expense_summary_by_category', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
+          target_user_id: userId,
+          start_date: startDate,
+          end_date: endDate
         });
         if (error) throw error;
         return data || [];
@@ -896,9 +896,9 @@ async function executeTool(toolName: string, args: any, supabase: any, userId: s
         const startDate = parseDate(args.start_date);
         const endDate = parseDate(args.end_date);
         const { data, error } = await supabase.rpc('get_income_summary_by_category', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
+          target_user_id: userId,
+          start_date: startDate,
+          end_date: endDate
         });
         if (error) throw error;
         return data || [];
@@ -907,8 +907,8 @@ async function executeTool(toolName: string, args: any, supabase: any, userId: s
       case "get_daily_trend": {
         const daysCount = args.days_count || 7;
         const { data, error } = await supabase.rpc('get_daily_trend', {
-          p_user_id: userId,
-          p_days_count: daysCount
+          target_user_id: userId,
+          days_count: daysCount
         });
         if (error) throw error;
         return data || [];
@@ -916,9 +916,9 @@ async function executeTool(toolName: string, args: any, supabase: any, userId: s
 
       case "get_month_summary": {
         const { data, error } = await supabase.rpc('get_month_summary', {
-          p_user_id: userId,
-          p_year: args.year,
-          p_month: args.month
+          target_user_id: userId,
+          year_val: args.year,
+          month_val: args.month
         });
         if (error) throw error;
         return data && data.length > 0 ? data[0] : { error: "No data found for this month" };
@@ -928,9 +928,9 @@ async function executeTool(toolName: string, args: any, supabase: any, userId: s
         const startDate = parseDate(args.start_date);
         const endDate = parseDate(args.end_date);
         const { data, error } = await supabase.rpc('get_savings_rate', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
+          target_user_id: userId,
+          start_date: startDate,
+          end_date: endDate
         });
         if (error) throw error;
         return data && data.length > 0 ? data[0] : { error: "No data found" };
@@ -939,8 +939,8 @@ async function executeTool(toolName: string, args: any, supabase: any, userId: s
       case "get_top_spending_days": {
         const limit = args.limit || 5;
         const { data, error } = await supabase.rpc('get_top_spending_days', {
-          p_user_id: userId,
-          p_limit: limit
+          target_user_id: userId,
+          limit_val: limit
         });
         if (error) throw error;
         return data || [];
@@ -1066,7 +1066,8 @@ async function callGemini(message: string, conversationHistory: any[] = [], syst
     throw new Error('GEMINI_API_KEY not configured');
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+  // Use gemini-2.5-pro for enhanced capabilities
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`;
 
   // Build conversation with system prompt (use provided or default)
   const contents = [
@@ -1114,10 +1115,21 @@ async function callGemini(message: string, conversationHistory: any[] = [], syst
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error('❌ Gemini API error status:', response.status);
+    console.error('❌ Gemini API error body:', errorText);
     throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
   }
 
-  return await response.json();
+  const jsonResponse = await response.json();
+  console.log('✅ Gemini API response:', JSON.stringify(jsonResponse, null, 2));
+  
+  // Validate response structure
+  if (!jsonResponse.candidates || !Array.isArray(jsonResponse.candidates) || jsonResponse.candidates.length === 0) {
+    console.error('❌ Invalid Gemini response structure:', jsonResponse);
+    throw new Error('Invalid response structure from Gemini API - no candidates array');
+  }
+
+  return jsonResponse;
 }
 
 serve(async (req) => {
@@ -1281,6 +1293,11 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
       }
 
       const content = candidate.content;
+      if (!content || !content.parts || !Array.isArray(content.parts)) {
+        console.error('❌ Invalid response structure from Gemini:', JSON.stringify(geminiResponse, null, 2));
+        throw new Error('Invalid response structure from Gemini API');
+      }
+
       const parts = content.parts;
 
       console.log('📦 Response parts:', JSON.stringify(parts, null, 2));

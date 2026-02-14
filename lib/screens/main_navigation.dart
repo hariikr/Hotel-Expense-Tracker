@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../features/transactions/cubits/transaction_cubit.dart';
 import '../utils/app_theme.dart';
 import '../utils/translations.dart';
 import '../services/language_service.dart';
@@ -16,13 +18,21 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
+  final GlobalKey<CalendarScreenState> _calendarKey =
+      GlobalKey<CalendarScreenState>();
 
-  final List<Widget> _screens = const [
-    DashboardScreen(),
-    CalendarScreen(),
-    AnalyticsScreen(),
-    AiChatScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const DashboardScreen(),
+      CalendarScreen(key: _calendarKey),
+      const AnalyticsScreen(),
+      const AiChatScreen(),
+    ];
+  }
 
   String get _languageCode => LanguageService.getLanguageCode();
 
@@ -49,6 +59,12 @@ class _MainNavigationState extends State<MainNavigation> {
             setState(() {
               _currentIndex = index;
             });
+            // Always refresh data when switching tabs
+            if (index == 0) {
+              context.read<TransactionCubit>().loadTransactions(DateTime.now());
+            } else if (index == 1) {
+              _calendarKey.currentState?.refresh();
+            }
           },
           selectedItemColor: AppTheme.primaryColor,
           unselectedItemColor: AppTheme.textSecondary,

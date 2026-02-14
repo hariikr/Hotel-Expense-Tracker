@@ -19,7 +19,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   String get _lang => LanguageService.getLanguageCode();
   final SmartInsightsService _insightsService = SmartInsightsService();
   SmartInsightsResponse? _smartInsights;
@@ -28,12 +29,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
   }
 
-  void _loadData() {
-    context.read<TransactionCubit>().loadTransactions(DateTime.now());
-    _loadSmartInsights();
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh data when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      _loadData();
+    }
+  }
+
+  Future<void> _loadData() async {
+    await context.read<TransactionCubit>().loadTransactions(DateTime.now());
+    await _loadSmartInsights();
   }
 
   Future<void> _loadSmartInsights() async {
@@ -54,6 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         userId: userId,
         period: 'week',
       );
+      print('✅ Insights loaded: ${insights.insights.length} insights');
+      print(
+          '✅ First insight: ${insights.insights.isNotEmpty ? insights.insights.first.title : "none"}');
       if (mounted) {
         setState(() {
           _smartInsights = insights;
@@ -61,7 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     } catch (e) {
-      print('Error loading insights: $e');
+      print('❌ Error loading insights: $e');
       if (mounted) {
         setState(() => _isLoadingInsights = false);
       }
@@ -173,7 +193,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           if (state is TransactionLoaded) {
             return RefreshIndicator(
-              onRefresh: () async => _loadData(),
+              onRefresh: _loadData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
@@ -193,9 +213,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 24),
 
                     // Smart Insights
-                    if (_smartInsights != null &&
+                    if (_isLoadingInsights)
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text('Loading AI Insights...'),
+                            ],
+                          ),
+                        ),
+                      )
+                    else if (_smartInsights != null &&
                         _smartInsights!.insights.isNotEmpty)
-                      _buildSmartInsights(),
+                      _buildSmartInsights()
+                    else
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.orange.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline,
+                                color: Colors.orange),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'No insights available. Add more transactions to get AI-powered insights.',
+                                style: TextStyle(color: Colors.black87),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                     const SizedBox(height: 24),
 
@@ -334,10 +397,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFinancialOverview(TransactionLoaded state) {
-    final savingsRate = state.totalIncome > 0
-        ? ((state.profit / state.totalIncome) * 100).toStringAsFixed(1)
-        : '0.0';
-
     return Container(
       decoration: BoxDecoration(
         gradient: AppTheme.primaryGradient,
@@ -356,106 +415,121 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          // Date selector
-          Text(
-            'Today - ${state.selectedDate.day}/${state.selectedDate.month}/${state.selectedDate.year}',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+          // === TODAY'S SUMMARY ===
+          Row(
+            children: [
+              const Icon(Icons.today, color: Colors.white70, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                "Today's Summary",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
 
-          // Main cards
+          // Daily Income & Expense
           Row(
             children: [
               Expanded(
                 child: _buildInfoCard(
                   'Income',
-                  '₹${state.totalIncome.toStringAsFixed(0)}',
+                  '₹${state.dailyIncome.toStringAsFixed(0)}',
                   Icons.trending_up,
                   Colors.greenAccent,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: _buildInfoCard(
                   'Expense',
-                  '₹${state.totalExpense.toStringAsFixed(0)}',
+                  '₹${state.dailyExpense.toStringAsFixed(0)}',
                   Icons.trending_down,
                   Colors.redAccent,
                 ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard(
+                  'Profit',
+                  '₹${state.dailyProfit.toStringAsFixed(0)}',
+                  state.dailyProfit >= 0
+                      ? Icons.arrow_upward
+                      : Icons.arrow_downward,
+                  state.dailyProfit >= 0
+                      ? Colors.greenAccent
+                      : Colors.redAccent,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
 
-          // Profit card
+          const SizedBox(height: 20),
+
+          // Divider
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Net Profit',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '$savingsRate% saved',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+            height: 1,
+            color: Colors.white.withOpacity(0.2),
+          ),
+
+          const SizedBox(height: 20),
+
+          // === ALL-TIME TOTAL ===
+          Row(
+            children: [
+              const Icon(Icons.account_balance,
+                  color: Colors.white70, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Overall Total',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '₹${state.profit.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        color: state.profit >= 0
-                            ? Colors.greenAccent
-                            : Colors.redAccent,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Icon(
-                      state.profit >= 0
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward,
-                      color: state.profit >= 0
-                          ? Colors.greenAccent
-                          : Colors.redAccent,
-                      size: 32,
-                    ),
-                  ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Total Income & Expense
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard(
+                  'Income',
+                  '₹${state.allTimeTotalIncome.toStringAsFixed(0)}',
+                  Icons.trending_up,
+                  Colors.greenAccent,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard(
+                  'Expense',
+                  '₹${state.allTimeTotalExpense.toStringAsFixed(0)}',
+                  Icons.trending_down,
+                  Colors.redAccent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard(
+                  'Profit',
+                  '₹${state.allTimeProfit.toStringAsFixed(0)}',
+                  state.allTimeProfit >= 0
+                      ? Icons.arrow_upward
+                      : Icons.arrow_downward,
+                  state.allTimeProfit >= 0
+                      ? Colors.greenAccent
+                      : Colors.redAccent,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -465,35 +539,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildInfoCard(
       String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(icon, color: color, size: 24),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 6),
           Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -878,13 +951,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 16),
           ...recentExpenses.map((expense) => _buildTransactionTile(
                 expense.categoryName ?? 'Expense',
-                expense.date,
                 expense.amount,
                 isExpense: true,
               )),
           ...recentIncomes.map((income) => _buildTransactionTile(
                 income.categoryName ?? 'Income',
-                income.date,
                 income.amount,
                 isExpense: false,
               )),
@@ -893,7 +964,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildTransactionTile(String title, DateTime date, double amount,
+  Widget _buildTransactionTile(String title, double amount,
       {required bool isExpense}) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -911,7 +982,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title,
         style: const TextStyle(fontWeight: FontWeight.w500),
       ),
-      subtitle: Text('${date.day}/${date.month}/${date.year}'),
       trailing: Text(
         '${isExpense ? '-' : '+'}₹${amount.toStringAsFixed(0)}',
         style: TextStyle(

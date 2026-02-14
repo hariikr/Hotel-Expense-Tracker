@@ -23,7 +23,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     _loadData();
   }
 
-  void _loadData() {
+  Future<void> _loadData() async {
     final now = DateTime.now();
     DateTime start, end;
 
@@ -45,7 +45,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         end = DateTime(now.year, now.month + 1, 0);
     }
 
-    context.read<TransactionCubit>().loadTransactionsRange(start, end);
+    await context.read<TransactionCubit>().loadTransactionsRange(start, end);
   }
 
   @override
@@ -102,7 +102,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
           if (state is TransactionLoaded) {
             return RefreshIndicator(
-              onRefresh: () async => _loadData(),
+              onRefresh: _loadData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(

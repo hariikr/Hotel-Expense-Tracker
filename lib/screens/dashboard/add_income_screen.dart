@@ -91,6 +91,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
         ));
       }
 
+      // Reload dashboard data to show fresh data immediately
+      await transactionCubit.loadTransactions(DateTime.now());
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Income saved successfully')),

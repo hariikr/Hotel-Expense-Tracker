@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:table_calendar/table_calendar.dart';
-import '../../features/transactions/cubits/transaction_cubit.dart';
-// Note: We are using the cubit state, assuming it exports necessary models or we import them
 import '../../features/transactions/models/expense_model.dart';
 import '../../features/transactions/models/income_model.dart';
+import '../../features/transactions/repositories/transaction_repository.dart';
 import '../../models/daily_summary.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/formatters.dart';
@@ -14,36 +12,79 @@ class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  State<CalendarScreen> createState() => CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class CalendarScreenState extends State<CalendarScreen>
+    with WidgetsBindingObserver {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   CalendarFormat _calendarFormat = CalendarFormat.month;
 
+  // Own data state — independent from the shared TransactionCubit
+  final TransactionRepository _repository = TransactionRepository();
+  List<ExpenseModel> _expenses = [];
+  List<IncomeModel> _incomes = [];
+  bool _isLoading = true;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedDay = DateTime.now();
     _loadData();
   }
 
-  void _loadData() {
-    // Load for the whole month/year ideally. For now, load all or a wide range.
-    // Let's load current month +/- 1 month for safety, or just rely on what's loaded.
-    // TransactionCubit might need a "loadMonth" method.
-    // Using loadTransactionsRange
-    final start = DateTime(2020, 1, 1);
-    final end = DateTime(2030, 12, 31);
-    context.read<TransactionCubit>().loadTransactionsRange(start, end);
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _loadData();
+    }
+  }
+
+  /// Public method to allow external refresh (e.g., from MainNavigation)
+  void refresh() => _loadData();
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      // Fetch all transactions for the calendar view
+      final results = await Future.wait([
+        _repository.getExpenses(),
+        _repository.getIncomes(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _expenses = results[0] as List<ExpenseModel>;
+          _incomes = results[1] as List<IncomeModel>;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Map<DateTime, DailySummary> _generateSummaries(
       List<ExpenseModel> expenses, List<IncomeModel> incomes) {
     final Map<DateTime, DailySummary> map = {};
 
-    // Process Expenses
     for (var e in expenses) {
       final date = Formatters.normalizeDate(e.date);
       if (!map.containsKey(date)) {
@@ -56,7 +97,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           mealsCount: 0,
         );
       }
-      // We need to update the summary. DailySummary might be immutable.
       final current = map[date]!;
       map[date] = current.copyWith(
         totalExpense: current.totalExpense + e.amount,
@@ -64,7 +104,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    // Process Incomes
     for (var i in incomes) {
       final date = Formatters.normalizeDate(i.date);
       if (!map.containsKey(date)) {
@@ -81,7 +120,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       map[date] = current.copyWith(
         totalIncome: current.totalIncome + i.amount,
         profit: (current.totalIncome + i.amount) - current.totalExpense,
-        // mealsCount: i.mealsCount, // IncomeModel doesn't have mealsCount yet?
       );
     }
 
@@ -127,133 +165,144 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      body: BlocBuilder<TransactionCubit, TransactionState>(
-        builder: (context, state) {
-          if (state is TransactionLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: _buildBody(),
+    );
+  }
 
-          if (state is TransactionLoaded) {
-            final summariesMap =
-                _generateSummaries(state.expenses, state.incomes);
-            final monthStats = _calculateMonthStats(summariesMap);
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Month Summary Card
-                  MonthSummaryCard(
-                    month: _focusedDay,
-                    totalIncome: monthStats['income']!,
-                    totalExpense: monthStats['expense']!,
-                    profit: monthStats['profit']!,
-                    profitDays: monthStats['profitDays']!.toInt(),
-                    lossDays: monthStats['lossDays']!.toInt(),
-                    totalDays: monthStats['totalDays']!.toInt(),
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Error: $_error'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final summariesMap = _generateSummaries(_expenses, _incomes);
+    final monthStats = _calculateMonthStats(summariesMap);
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            MonthSummaryCard(
+              month: _focusedDay,
+              totalIncome: monthStats['income']!,
+              totalExpense: monthStats['expense']!,
+              profit: monthStats['profit']!,
+              profitDays: monthStats['profitDays']!.toInt(),
+              lossDays: monthStats['lossDays']!.toInt(),
+              totalDays: monthStats['totalDays']!.toInt(),
+            ),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-
-                  // Calendar Widget
-                  Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: TableCalendar<DailySummary>(
-                      firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.utc(2030, 12, 31),
-                      focusedDay: _focusedDay,
-                      selectedDayPredicate: (day) =>
-                          isSameDay(_selectedDay, day),
-                      calendarFormat: _calendarFormat,
-                      headerStyle: const HeaderStyle(
-                        formatButtonVisible: false,
-                        titleCentered: true,
-                        titleTextStyle: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      daysOfWeekStyle: const DaysOfWeekStyle(
-                        weekdayStyle: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey,
-                        ),
-                        weekendStyle: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red,
-                        ),
-                      ),
-                      calendarStyle: CalendarStyle(
-                        todayDecoration: BoxDecoration(
-                          color: AppTheme.secondaryColor.withOpacity(0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        selectedDecoration: const BoxDecoration(
-                          color: AppTheme.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        markerDecoration: const BoxDecoration(
-                          color: AppTheme.accentColor,
-                          shape: BoxShape.circle,
-                        ),
-                        outsideDaysVisible: false,
-                      ),
-                      calendarBuilders: CalendarBuilders(
-                        markerBuilder: (context, date, events) {
-                          final summary =
-                              summariesMap[Formatters.normalizeDate(date)];
-                          if (summary != null) {
-                            return Positioned(
-                              bottom: 1,
-                              child: Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: summary.profit >= 0
-                                      ? Colors.green
-                                      : Colors.red,
-                                ),
-                              ),
-                            );
-                          }
-                          return null;
-                        },
-                      ),
-                      onDaySelected: (selectedDay, focusedDay) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                      },
-                      onPageChanged: (focusedDay) {
-                        setState(() {
-                          _focusedDay = focusedDay;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  if (_selectedDay != null)
-                    _buildDayDetails(
-                        summariesMap[Formatters.normalizeDate(_selectedDay!)]),
                 ],
               ),
-            );
-          }
-
-          return const Center(child: Text('No Data'));
-        },
+              child: TableCalendar<DailySummary>(
+                firstDay: DateTime.utc(2020, 1, 1),
+                lastDay: DateTime.utc(2030, 12, 31),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                calendarFormat: _calendarFormat,
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                  titleTextStyle: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+                daysOfWeekStyle: const DaysOfWeekStyle(
+                  weekdayStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
+                  ),
+                  weekendStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red,
+                  ),
+                ),
+                calendarStyle: CalendarStyle(
+                  todayDecoration: BoxDecoration(
+                    color: AppTheme.secondaryColor.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: const BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  markerDecoration: const BoxDecoration(
+                    color: AppTheme.accentColor,
+                    shape: BoxShape.circle,
+                  ),
+                  outsideDaysVisible: false,
+                ),
+                calendarBuilders: CalendarBuilders(
+                  markerBuilder: (context, date, events) {
+                    final summary =
+                        summariesMap[Formatters.normalizeDate(date)];
+                    if (summary != null) {
+                      return Positioned(
+                        bottom: 1,
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color:
+                                summary.profit >= 0 ? Colors.green : Colors.red,
+                          ),
+                        ),
+                      );
+                    }
+                    return null;
+                  },
+                ),
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                  });
+                },
+                onPageChanged: (focusedDay) {
+                  setState(() {
+                    _focusedDay = focusedDay;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (_selectedDay != null)
+              _buildDayDetails(
+                  summariesMap[Formatters.normalizeDate(_selectedDay!)]),
+          ],
+        ),
       ),
     );
   }
@@ -280,130 +329,122 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    return BlocBuilder<TransactionCubit, TransactionState>(
-      builder: (context, state) {
-        if (state is! TransactionLoaded) {
-          return const SizedBox.shrink();
-        }
+    // Filter transactions for selected day from own data
+    final selectedDayTransactions = _filterTransactionsForDay(
+      _expenses,
+      _incomes,
+      _selectedDay!,
+    );
 
-        // Filter transactions for selected day
-        final selectedDayTransactions = _filterTransactionsForDay(
-          state.expenses,
-          state.incomes,
-          _selectedDay!,
-        );
-
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Day summary card
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Day summary card
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    summary.profit >= 0
+                        ? Colors.green.shade50
+                        : Colors.red.shade50,
+                    Colors.white,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        summary.profit >= 0
-                            ? Colors.green.shade50
-                            : Colors.red.shade50,
-                        Colors.white,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    Formatters.formatDateFull(summary.date),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Text(
-                        Formatters.formatDateFull(summary.date),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      _buildSummaryItem(
+                        'Income',
+                        '₹${summary.totalIncome.toStringAsFixed(0)}',
+                        Icons.arrow_downward,
+                        Colors.green,
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildSummaryItem(
-                            'Income',
-                            '₹${summary.totalIncome.toStringAsFixed(0)}',
-                            Icons.arrow_downward,
-                            Colors.green,
-                          ),
-                          _buildSummaryItem(
-                            'Expense',
-                            '₹${summary.totalExpense.toStringAsFixed(0)}',
-                            Icons.arrow_upward,
-                            Colors.red,
-                          ),
-                          _buildSummaryItem(
-                            'Profit',
-                            '₹${summary.profit.toStringAsFixed(0)}',
-                            summary.profit >= 0
-                                ? Icons.trending_up
-                                : Icons.trending_down,
-                            summary.profit >= 0 ? Colors.green : Colors.red,
-                          ),
-                        ],
+                      _buildSummaryItem(
+                        'Expense',
+                        '₹${summary.totalExpense.toStringAsFixed(0)}',
+                        Icons.arrow_upward,
+                        Colors.red,
+                      ),
+                      _buildSummaryItem(
+                        'Profit',
+                        '₹${summary.profit.toStringAsFixed(0)}',
+                        summary.profit >= 0
+                            ? Icons.trending_up
+                            : Icons.trending_down,
+                        summary.profit >= 0 ? Colors.green : Colors.red,
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Transactions list
+          if (selectedDayTransactions['expenses']!.isEmpty &&
+              selectedDayTransactions['incomes']!.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Text(
+                  'No transactions recorded',
+                  style: TextStyle(color: Colors.grey),
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Transactions list
-              if (selectedDayTransactions['expenses']!.isEmpty &&
-                  selectedDayTransactions['incomes']!.isEmpty)
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Center(
-                    child: Text(
-                      'No transactions recorded',
-                      style: TextStyle(color: Colors.grey),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Text(
+                    'Transactions',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
-                )
-              else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      child: Text(
-                        'Transactions',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    ...selectedDayTransactions['expenses']!
-                        .map((expense) => _buildTransactionTile(
-                              expense: expense,
-                              isExpense: true,
-                            )),
-                    ...selectedDayTransactions['incomes']!
-                        .map((income) => _buildTransactionTile(
-                              income: income,
-                              isExpense: false,
-                            )),
-                  ],
                 ),
-            ],
-          ),
-        );
-      },
+                ...selectedDayTransactions['expenses']!
+                    .map((expense) => _buildTransactionTile(
+                          expense: expense,
+                          isExpense: true,
+                        )),
+                ...selectedDayTransactions['incomes']!
+                    .map((income) => _buildTransactionTile(
+                          income: income,
+                          isExpense: false,
+                        )),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
@@ -492,11 +533,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       },
       onDismissed: (direction) {
-        if (isExpense) {
-          context.read<TransactionCubit>().deleteExpense(id);
-        } else {
-          context.read<TransactionCubit>().deleteIncome(id);
-        }
+        _deleteAndReload(id, isExpense);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -588,11 +625,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   );
 
                   if (confirmed == true) {
-                    if (isExpense) {
-                      context.read<TransactionCubit>().deleteExpense(id);
-                    } else {
-                      context.read<TransactionCubit>().deleteIncome(id);
-                    }
+                    _deleteAndReload(id, isExpense);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
@@ -615,6 +648,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _deleteAndReload(String id, bool isExpense) async {
+    try {
+      if (isExpense) {
+        await _repository.deleteExpense(id);
+      } else {
+        await _repository.deleteIncome(id);
+      }
+      // Reload calendar data after deletion
+      await _loadData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Map<String, List<dynamic>> _filterTransactionsForDay(

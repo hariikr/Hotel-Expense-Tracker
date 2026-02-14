@@ -19,29 +19,55 @@ class TransactionLoaded extends TransactionState {
   final List<ExpenseModel> expenses;
   final List<IncomeModel> incomes;
   final DateTime selectedDate;
+  final double allTimeTotalExpense;
+  final double allTimeTotalIncome;
+  final int _loadTimestamp;
 
-  const TransactionLoaded({
+  TransactionLoaded({
     this.expenses = const [],
     this.incomes = const [],
     required this.selectedDate,
-  });
+    this.allTimeTotalExpense = 0,
+    this.allTimeTotalIncome = 0,
+    int? loadTimestamp,
+  }) : _loadTimestamp = loadTimestamp ?? DateTime.now().millisecondsSinceEpoch;
 
+  // Daily totals (from the filtered list)
+  double get dailyExpense => expenses.fold(0, (sum, item) => sum + item.amount);
+  double get dailyIncome => incomes.fold(0, (sum, item) => sum + item.amount);
+  double get dailyProfit => dailyIncome - dailyExpense;
+
+  // Keep old getters for backward compatibility
   double get totalExpense => expenses.fold(0, (sum, item) => sum + item.amount);
   double get totalIncome => incomes.fold(0, (sum, item) => sum + item.amount);
   double get profit => totalIncome - totalExpense;
 
+  // All-time totals
+  double get allTimeProfit => allTimeTotalIncome - allTimeTotalExpense;
+
   @override
-  List<Object> get props => [expenses, incomes, selectedDate];
+  List<Object> get props => [
+        expenses,
+        incomes,
+        selectedDate,
+        allTimeTotalExpense,
+        allTimeTotalIncome,
+        _loadTimestamp
+      ];
 
   TransactionLoaded copyWith({
     List<ExpenseModel>? expenses,
     List<IncomeModel>? incomes,
     DateTime? selectedDate,
+    double? allTimeTotalExpense,
+    double? allTimeTotalIncome,
   }) {
     return TransactionLoaded(
       expenses: expenses ?? this.expenses,
       incomes: incomes ?? this.incomes,
       selectedDate: selectedDate ?? this.selectedDate,
+      allTimeTotalExpense: allTimeTotalExpense ?? this.allTimeTotalExpense,
+      allTimeTotalIncome: allTimeTotalIncome ?? this.allTimeTotalIncome,
     );
   }
 }
@@ -64,13 +90,26 @@ class TransactionCubit extends Cubit<TransactionState> {
   Future<void> loadTransactions(DateTime date) async {
     try {
       emit(TransactionLoading());
-      final expenses = await _repository.getExpenses(date: date);
-      final incomes = await _repository.getIncomes(date: date);
+
+      // Fetch daily and all-time data in parallel
+      final results = await Future.wait([
+        _repository.getExpenses(date: date),
+        _repository.getIncomes(date: date),
+        _repository.getTotalExpenseAmount(),
+        _repository.getTotalIncomeAmount(),
+      ]);
+
+      final expenses = results[0] as List<ExpenseModel>;
+      final incomes = results[1] as List<IncomeModel>;
+      final allTimeExpense = results[2] as double;
+      final allTimeIncome = results[3] as double;
 
       emit(TransactionLoaded(
         expenses: expenses,
         incomes: incomes,
         selectedDate: date,
+        allTimeTotalExpense: allTimeExpense,
+        allTimeTotalIncome: allTimeIncome,
       ));
     } catch (e) {
       emit(TransactionError(e.toString()));

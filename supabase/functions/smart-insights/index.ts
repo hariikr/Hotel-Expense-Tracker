@@ -55,46 +55,92 @@ serve(async (req) => {
 
     console.log(`📅 Analyzing data from ${startDate} to ${endDate}`);
 
-    // Fetch financial data using new analytics functions
+    // Fetch financial data using analytics functions
+    // Note: Using original parameter names (target_user_id, start_date, end_date)
     const { data: expenseSummary, error: expenseError } = await supabase.rpc('get_expense_summary_by_category', {
-      p_user_id: userId,
-      p_start_date: startDate,
-      p_end_date: endDate
+      target_user_id: userId,
+      start_date: startDate,
+      end_date: endDate
     });
 
-    if (expenseError) throw expenseError;
+    if (expenseError) {
+      console.error('❌ Expense summary error:', expenseError);
+      throw new Error(`Failed to fetch expense summary: ${expenseError.message}`);
+    }
 
     const { data: incomeSummary, error: incomeError } = await supabase.rpc('get_income_summary_by_category', {
-      p_user_id: userId,
-      p_start_date: startDate,
-      p_end_date: endDate
+      target_user_id: userId,
+      start_date: startDate,
+      end_date: endDate
     });
 
-    if (incomeError) throw incomeError;
+    if (incomeError) {
+      console.error('❌ Income summary error:', incomeError);
+      throw new Error(`Failed to fetch income summary: ${incomeError.message}`);
+    }
 
     const { data: dailyTrend, error: trendError } = await supabase.rpc('get_daily_trend', {
-      p_user_id: userId,
-      p_days_count: 7
+      target_user_id: userId,
+      days_count: period === 'month' ? 30 : 7
     });
 
-    if (trendError) throw trendError;
+    if (trendError) {
+      console.error('❌ Daily trend error:', trendError);
+      throw new Error(`Failed to fetch daily trend: ${trendError.message}`);
+    }
 
     const { data: savingsData, error: savingsError } = await supabase.rpc('get_savings_rate', {
-      p_user_id: userId,
-      p_start_date: startDate,
-      p_end_date: endDate
+      target_user_id: userId,
+      start_date: startDate,
+      end_date: endDate
     });
 
-    if (savingsError) throw savingsError;
+    if (savingsError) {
+      console.error('❌ Savings rate error:', savingsError);
+      throw new Error(`Failed to fetch savings rate: ${savingsError.message}`);
+    }
+
+    console.log('✅ Data fetched successfully');
+    console.log('📊 Expense summary:', expenseSummary);
+    console.log('💰 Income summary:', incomeSummary);
+    console.log('📈 Daily trend:', dailyTrend);
+    console.log('💵 Savings data:', savingsData);
+
+    // Handle empty data
+    if ((!expenseSummary || expenseSummary.length === 0) && 
+        (!incomeSummary || incomeSummary.length === 0)) {
+      return new Response(
+        JSON.stringify({
+          insights: [{
+            type: 'info',
+            title: 'ഡാറ്റ ഇല്ല',
+            message: 'ഈ കാലയളവിൽ ഇതുവരെ ഇൻകം അല്ലെങ്കിൽ എക്സ്പൻസ് ഡാറ്റ ഇല്ല. ആദ്യം ഇൻകം എക്സ്പൻസ് ചേർക്കൂ.',
+            icon: '📊'
+          }],
+          summary: {
+            totalIncome: 0,
+            totalExpense: 0,
+            profit: 0,
+            profitMargin: 0,
+            profitableDays: 0,
+            totalDays: 0
+          },
+          period,
+          startDate,
+          endDate
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Calculate summary from the data
-    const totalIncome = incomeSummary?.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0) || 0;
-    const totalExpense = expenseSummary?.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0) || 0;
+    const totalIncome = incomeSummary?.reduce((sum: number, item: any) => sum + parseFloat(item.total_amount || 0), 0) || 0;
+    const totalExpense = expenseSummary?.reduce((sum: number, item: any) => sum + parseFloat(item.total_amount || 0), 0) || 0;
     const profit = totalIncome - totalExpense;
-    const profitMargin = totalIncome > 0 ? ((profit / totalIncome) * 100).toFixed(2) : 0;
-    const profitableDays = dailyTrend?.filter((day: any) => day.profit > 0).length || 0;
-    const totalDays = dailyTrend?.length || 0;
-    const avgDailyIncome = totalDays > 0 ? (totalIncome / totalDays).toFixed(2) : 0;
+    const profitMargin = totalIncome > 0 ? ((profit / totalIncome) * 100).toFixed(1) : '0';
+    const profitableDays = dailyTrend?.filter((day: any) => parseFloat(day.profit || 0) > 0).length || 0;
+    const totalDays = dailyTrend?.length || 1;
+    const avgDailyIncome = totalDays > 0 ? (totalIncome / totalDays).toFixed(0) : '0';
 
     const summary = {
       total_income: totalIncome,
@@ -106,30 +152,18 @@ serve(async (req) => {
       total_days: totalDays
     };
 
-    if (!summary) {
-      return new Response(
-        JSON.stringify({
-          insights: [],
-          summary: null,
-          message: 'ഈ കാലയളവിൽ ഡാറ്റ ഇല്ല'
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     console.log('📊 Data summary:', summary);
-    console.log('💸 Top expenses:', expenseSummary);
+    console.log('💸 Expense breakdown:', expenseSummary);
     console.log('💰 Income breakdown:', incomeSummary);
-    console.log('📈 Daily trend:', dailyTrend);
 
     // Get top 5 expense categories
     const topExpenses = expenseSummary?.slice(0, 5) || [];
     
     // Get income breakdown
-    const onlineIncome = incomeSummary?.find((item: any) => item.category_name?.toLowerCase() === 'online')?.total_amount || 0;
-    const offlineIncome = incomeSummary?.find((item: any) => item.category_name?.toLowerCase() === 'offline')?.total_amount || 0;
-    const onlinePercentage = totalIncome > 0 ? ((onlineIncome / totalIncome) * 100).toFixed(1) : 0;
-    const offlinePercentage = totalIncome > 0 ? ((offlineIncome / totalIncome) * 100).toFixed(1) : 0;
+    const onlineIncome = incomeSummary?.find((item: any) => item.category_name?.toLowerCase().includes('online'))?.total_amount || 0;
+    const offlineIncome = incomeSummary?.find((item: any) => item.category_name?.toLowerCase().includes('offline'))?.total_amount || 0;
+    const onlinePercentage = totalIncome > 0 ? ((parseFloat(onlineIncome as any) / totalIncome) * 100).toFixed(1) : '0';
+    const offlinePercentage = totalIncome > 0 ? ((parseFloat(offlineIncome as any) / totalIncome) * 100).toFixed(1) : '0';
 
     // Build prompt for Gemini
     const prompt = `You are a professional business analyst for a small hotel/restaurant in Kerala, India. Analyze this financial data and provide actionable insights in Malayalam.
@@ -156,56 +190,43 @@ ${topExpenses?.map((exp: any, idx: number) =>
 
 📈 RECENT TREND (Last 7 Days):
 ${dailyTrend?.slice(0, 5).map((day: any) => 
-  `• ${day.trend_date}: Profit ₹${day.profit} (Income: ₹${day.total_income}, Expense: ₹${day.total_expense})`
+  `• ${day.date}: Profit ₹${parseFloat(day.profit || 0).toFixed(0)} (Income: ₹${parseFloat(day.total_income || 0).toFixed(0)}, Expense: ₹${parseFloat(day.total_expense || 0).toFixed(0)})`
 ).join('\n') || 'No recent data'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-TASK: Generate exactly 4-6 smart business insights in Malayalam. Each insight must:
-1. Start with an emoji relevant to the insight
-2. Be specific and actionable
-3. Include actual numbers from the data
-4. Be encouraging and supportive
-5. Focus on one specific aspect (profit, expenses, income, trends, suggestions)
+TASK: Generate exactly 4-5 smart business insights in Malayalam. Each insight must:
+1. Start with a relevant emoji
+2. Be specific with actual numbers from the data above
+3. Be actionable and helpful
+4. Sound encouraging and supportive
+5. Focus on: profit trends, expense patterns, income sources, cost-saving tips, or growth opportunities
 
-RESPONSE FORMAT (JSON only):
+CRITICAL: Respond with ONLY valid JSON. No markdown, no code blocks, no explanations.
+
+RESPONSE FORMAT:
 {
   "insights": [
     {
-      "type": "profit|expense|income|trend|warning|suggestion",
-      "title": "Short title in Malayalam (5-8 words)",
-      "message": "Detailed insight in Malayalam (20-40 words with specific numbers)",
+      "type": "profit|expense|income|trend|suggestion",
+      "title": "Short Malayalam title (5-8 words)",
+      "message": "Detailed Malayalam message (25-45 words with specific numbers)",
       "icon": "emoji"
     }
   ]
 }
 
-EXAMPLE INSIGHTS:
+EXAMPLE:
 {
   "insights": [
     {
       "type": "profit",
-      "title": "നല്ല ലാഭം വരുന്നുണ്ട്!",
-      "message": "ഈ ആഴ്ച നിങ്ങൾക്ക് ₹15,450 ലാഭമുണ്ട്! കഴിഞ്ഞ ആഴ്ചയേക്കാൾ 12% കൂടുതൽ. നിങ്ങളുടെ കഠിനാധ്വാനം ഫലിക്കുന്നുണ്ട് അമ്മേ! തുടർന്നും ഇതേ രീതിയിൽ പോകൂ!",
+      "title": "ഈ ആഴ്ച നല്ല ലാഭം!",
+      "message": "നിങ്ങൾക്ക് ₹${Math.round(profit)} ലാഭമുണ്ട്! ലാഭ മാർജിൻ ${profitMargin}% ആണ്. ${profitableDays} ദിവസം ലാഭകരമായി. വളരെ നന്നായി മുന്നോട്ട് പോകുന്നു!",
       "icon": "💰"
-    },
-    {
-      "type": "expense",
-      "title": "മീൻ ചെലവ് കൂടുതലാണ്",
-      "message": "ഈ ആഴ്ച മീനിന് ₹8,500 ചെലവായി (മൊത്തം ചെലവിന്റെ 35%). വെള്ളിയാഴ്ച മൊത്തമായി വാങ്ങിയാൽ വില കുറയും. സീസണൽ മീൻ തിരഞ്ഞെടുക്കൂ.",
-      "icon": "🐟"
     }
   ]
-}
-
-IMPORTANT RULES:
-- MUST respond with valid JSON only
-- NO markdown, NO code blocks, NO explanations
-- Exactly 4-6 insights
-- All text in Malayalam
-- Include real numbers from the data
-- Be encouraging and supportive like a daughter talking to mother
-- Focus on actionable advice`;
+}`;
 
     console.log('🤖 Calling Gemini API for insights...');
 
@@ -265,33 +286,62 @@ IMPORTANT RULES:
       }
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      // Fallback insights
+      // Fallback insights with actual data
       insights = [
         {
           type: 'summary',
-          title: 'സാമ്പത്തിക സാരാംശം',
-          message: `ഈ കാലയളവിൽ നിങ്ങൾക്ക് ₹${summary.profit} ലാഭമുണ്ട്. കഴിഞ്ഞ ദിവസങ്ങളിൽ ${summary.profitable_days} ദിവസം ലാഭകരമായിരുന്നു.`,
-          icon: '💰'
-        },
-        {
-          type: 'income',
-          title: 'വരുമാന വിശകലനം',
-          message: `ഓൺലൈൻ: ₹${onlineIncome}, ഓഫ്‌ലൈൻ: ₹${offlineIncome}. ${parseFloat(onlinePercentage as string) > 50 ? 'ഓൺലൈൻ കൂടുതൽ!' : 'ഓഫ്‌ലൈൻ കൂടുതൽ!'}`,
-          icon: '💵'
+          title: `${period === 'today' ? 'ഇന്നത്തെ' : period === 'week' ? 'ഈ ആഴ്ചയിലെ' : 'ഈ മാസത്തെ'} സാരാംശം`,
+          message: `മൊത്തം വരുമാനം ₹${Math.round(totalIncome)}, ചെലവ് ₹${Math.round(totalExpense)}, ലാഭം ₹${Math.round(profit)}. ${profitableDays} ദിവസം ലാഭകരമായി.`,
+          icon: '📊'
         }
       ];
+      
+      if (profit > 0) {
+        insights.push({
+          type: 'profit',
+          title: 'നല്ല ലാഭം ഉണ്ട്!',
+          message: `നിങ്ങൾക്ക് ₹${Math.round(profit)} ലാഭമുണ്ട്. ലാഭ മാർജിൻ ${profitMargin}% ആണ്. വളരെ നന്നായി പോകുന്നു!`,
+          icon: '💰'
+        });
+      } else {
+        insights.push({
+          type: 'warning',
+          title: 'ചെലവ് കൂടുതലാണ്',
+          message: `ഇപ്പോൾ ₹${Math.round(Math.abs(profit))} നഷ്ടമുണ്ട്. ചെലവ് കുറയ്ക്കാൻ ശ്രദ്ധിക്കൂ.`,
+          icon: '⚠️'
+        });
+      }
+      
+      if (topExpenses.length > 0) {
+        const topExpense = topExpenses[0];
+        insights.push({
+          type: 'expense',
+          title: `${topExpense.category_name} ചെലവ് കൂടുതൽ`,
+          message: `${topExpense.category_name} എന്നതിന് ₹${Math.round(parseFloat(topExpense.total_amount))} (${topExpense.percentage}%) ചെലവായി. ഇത് കുറയ്ക്കാൻ ശ്രമിക്കൂ.`,
+          icon: '💸'
+        });
+      }
+      
+      if (totalIncome > 0) {
+        insights.push({
+          type: 'income',
+          title: 'വരുമാന വിശകലനം',
+          message: `ഓൺലൈൻ: ₹${Math.round(parseFloat(onlineIncome as any))}, ഓഫ്‌ലൈൻ: ₹${Math.round(parseFloat(offlineIncome as any))}. ${parseFloat(onlinePercentage) > 50 ? 'ഓൺലൈൻ വരുമാനം കൂടുതൽ!' : 'ഓഫ്‌ലൈൻ വരുമാനം കൂടുതൽ!'}`,
+          icon: '💵'
+        });
+      }
     }
 
     return new Response(
       JSON.stringify({
         insights,
         summary: {
-          totalIncome: summary.total_income || 0,
-          totalExpense: summary.total_expense || 0,
-          profit: summary.profit || 0,
-          profitMargin: summary.profit_margin || 0,
-          profitableDays: summary.profitable_days || 0,
-          totalDays: summary.total_days || 0
+          totalIncome: Math.round(totalIncome),
+          totalExpense: Math.round(totalExpense),
+          profit: Math.round(profit),
+          profitMargin: parseFloat(profitMargin),
+          profitableDays: profitableDays,
+          totalDays: totalDays
         },
         period,
         startDate,
@@ -305,32 +355,56 @@ IMPORTANT RULES:
 
   } catch (error) {
     console.error('❌ Error in smart-insights function:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    if (error instanceof Error && error.stack) {
+      console.error('Stack trace:', error.stack);
+    }
 
     // Provide detailed error message
-    let errorMessage = 'Unknown error';
+    let errorMessage = 'Unknown error occurred';
+    let errorDetails = '';
+
     if (error instanceof Error) {
       errorMessage = error.message;
+      errorDetails = error.stack || '';
       
       // Check specific error types
       if (errorMessage.includes('get_expense_summary_by_category') || 
           errorMessage.includes('get_income_summary_by_category') ||
           errorMessage.includes('get_daily_trend') ||
           errorMessage.includes('get_savings_rate')) {
-        errorMessage = 'Database analytics functions not found. Please run migration 102: supabase db push';
+        errorMessage = 'Database functions not available. Please ensure migrations are applied: supabase db push';
+        errorDetails = 'Run migration 103_fix_rpc_function_params.sql';
       } else if (errorMessage.includes('GEMINI_API_KEY')) {
-        errorMessage = 'Gemini API key not configured. Please set GEMINI_API_KEY secret.';
-      } else if (errorMessage.includes('Gemini API error')) {
-        errorMessage = 'Gemini API error. Check API key and quota.';
+        errorMessage = 'Gemini API key not configured';
+        errorDetails = 'Please set GEMINI_API_KEY in Supabase project settings';
+      } else if (errorMessage.includes('Gemini API')) {
+        errorMessage = 'Gemini API request failed';
+        errorDetails = errorMessage;
+      } else if (errorMessage.includes('fetch')) {
+        errorMessage = 'Failed to fetch data from database';
+        errorDetails = errorMessage;
       }
     }
 
     return new Response(
       JSON.stringify({
         error: errorMessage,
-        details: error instanceof Error ? error.message : String(error),
-        insights: [],
-        summary: null
+        details: errorDetails,
+        insights: [{
+          type: 'error',
+          title: 'എറർ സംഭവിച്ചു',
+          message: 'സ്മാർട്ട് ഇൻസൈറ്റുകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കൂ.',
+          icon: '⚠️'
+        }],
+        summary: {
+          totalIncome: 0,
+          totalExpense: 0,
+          profit: 0,
+          profitMargin: 0,
+          profitableDays: 0,
+          totalDays: 0
+        }
       }),
       { 
         status: 500, 
