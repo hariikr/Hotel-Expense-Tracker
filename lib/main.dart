@@ -6,6 +6,7 @@ import 'features/settings/cubits/category_cubit.dart';
 import 'features/settings/repositories/category_repository.dart';
 import 'features/transactions/cubits/transaction_cubit.dart';
 import 'features/transactions/repositories/transaction_repository.dart';
+import 'features/billing/cubits/bill_cubit.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'services/auth_service.dart';
 import 'screens/auth/auth_wrapper.dart';
@@ -68,6 +69,9 @@ class HotelExpenseTrackerApp extends StatelessWidget {
           create: (context) =>
               TransactionCubit(repository: transactionRepository)
                 ..loadTransactions(DateTime.now()),
+        ),
+        BlocProvider(
+          create: (context) => BillCubit()..loadBills(),
         ),
       ],
       child: MaterialApp(

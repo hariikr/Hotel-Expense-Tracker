@@ -133,7 +133,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               builder: (context) => AlertDialog(
                 title: const Row(
                   children: [
-                    Icon(Icons.email, color: Color(0xFF1B5E20)),
+                    Icon(Icons.email, color: Color(0xFF1E3A8A)),
                     SizedBox(width: 8),
                     Text('ഇമെയിൽ പരിശോധിക്കുക'),
                   ],
@@ -169,7 +169,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B5E20),
+                      backgroundColor: const Color(0xFF1E3A8A),
                       foregroundColor: Colors.white,
                     ),
                     child: const Text('വീണ്ടും അയക്കുക'),
@@ -191,9 +191,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF1B5E20),
-                  Color(0xFF2E7D32),
-                  Color(0xFF43A047),
+                  Color(0xFF1E3A8A),
+                  Color(0xFF1E40AF),
+                  Color(0xFF3B82F6),
                 ],
               ),
             ),
@@ -405,7 +405,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   children: [
                                     Checkbox(
                                       value: _acceptedTerms,
-                                      activeColor: const Color(0xFF1B5E20),
+                                      activeColor: const Color(0xFF1E3A8A),
                                       onChanged: (value) {
                                         setState(() {
                                           _acceptedTerms = value ?? false;
@@ -436,7 +436,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     onPressed:
                                         _isLoading ? null : _handleSignUp,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF1B5E20),
+                                      backgroundColor: const Color(0xFF1E3A8A),
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),

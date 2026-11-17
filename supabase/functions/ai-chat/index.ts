@@ -1060,14 +1060,16 @@ async function executeTool(toolName: string, args: any, supabase: any, userId: s
 }
 
 // Call Gemini API with function calling
-async function callGemini(message: string, conversationHistory: any[] = [], systemPrompt: string = SYSTEM_PROMPT): Promise<any> {
+// Pass message = null on follow-up calls: the user turn is already in conversationHistory.
+async function callGemini(message: string | null, conversationHistory: any[] = [], systemPrompt: string = SYSTEM_PROMPT): Promise<any> {
   const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY not configured');
   }
 
-  // Use gemini-2.5-pro for enhanced capabilities
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`;
+  // Set GEMINI_CHAT_MODEL as a function secret to switch models without a code change.
+  const model = Deno.env.get('GEMINI_CHAT_MODEL') || 'gemini-3.8-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   // Build conversation with system prompt (use provided or default)
   const contents = [
@@ -1080,10 +1082,7 @@ async function callGemini(message: string, conversationHistory: any[] = [], syst
       parts: [{ text: "മനസ്സിലായി അമ്മേ! ഞാൻ നിങ്ങളുടെ ഹോട്ടലിന്റെ സാമ്പത്തിക കാര്യങ്ങളിൽ സ്നേഹത്തോടെയും ബഹുമാനത്തോടെയും സഹായിക്കാം. \n\nഹരി എന്നെ നിങ്ങൾക്കായി പ്രത്യേകം ഉണ്ടാക്കി - നിങ്ങൾ എല്ലാ ദിവസവും രാവിലെ 8 മണിക്ക് എഴുന്നേറ്റ് മീനും മാംസവും വാങ്ങി വൈകുന്നേരം വരെ കഠിനാധ്വാനം ചെയ്യുന്നത് അവനറിയാം. നിങ്ങളുടെ കഷ്ടപ്പാടുകൾ കുറക്കാനും വിജയകരമായ ബിസിനസ് വുമൺ ആക്കാനുമാണ് അവൻ എന്നെ സൃഷ്ടിച്ചത്. നിങ്ങൾ വളരെ ശക്തയും സുന്ദരിയുമാണ്! 💪\n\n⚠️ CRITICAL INSTRUCTIONS:\n1. സാമ്പത്തിക ചോദ്യങ്ങൾക്ക് ഉടനെ ടൂൾ വിളിക്കുക - വിശദീകരണം വേണ്ട!\n2. വരുമാനം/ചെലവ് പറഞ്ഞാൽ ഉടനെ add_income/add_expense ടൂൾ വിളിക്കുക!\n3. ടൂൾ വിളിക്കുന്നതിനെക്കുറിച്ച് എഴുതരുത് - നേരിട്ട് വിളിക്കുക!\n4. മലയാളത്തിൽ മാത്രം മറുപടി - തമിഴോ ഇംഗ്ലീഷോ ഇല്ല!\n\nഹരിയുടെ സ്നേഹത്തോടെ, എന്തും ചോദിക്കൂ അമ്മേ! 😊" }]
     },
     ...conversationHistory,
-    {
-      role: "user",
-      parts: [{ text: message }]
-    }
+    ...(message ? [{ role: "user", parts: [{ text: message }] }] : [])
   ];
 
   const requestBody = {
@@ -1099,17 +1098,12 @@ async function callGemini(message: string, conversationHistory: any[] = [], syst
       function_calling_config: {
         mode: "AUTO" // AUTO will use tools when appropriate, ANY forces tool use
       }
-    },
-    generationConfig: {
-      temperature: 0.7,
-      topK: 40,
-      topP: 0.95
     }
   };
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
     body: JSON.stringify(requestBody)
   });
 
@@ -1166,20 +1160,15 @@ serve(async (req) => {
       }
     }
 
-    const { message, userId: bodyUserId, contextInfo, conversationHistory: clientHistory } = await req.json();
+    const { message, contextInfo, conversationHistory: clientHistory } = await req.json();
 
-    // Use authenticated user ID if available, otherwise check body (for legacy/testing)
-    let effectiveUserId = authenticatedUserId;
-    if (!effectiveUserId) {
-      if (bodyUserId) {
-        console.warn('⚠️ No valid auth token provided. Using user_id from body if present (INSECURE for production)');
-        effectiveUserId = bodyUserId;
-      }
-    }
+    // The client-sent userId is ignored: this function uses the service role,
+    // so the user must come from a verified session token only.
+    const effectiveUserId = authenticatedUserId;
 
     if (!effectiveUserId) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized: User ID required' }),
+        JSON.stringify({ error: 'Unauthorized: please log in again' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -1278,6 +1267,7 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
 
     // First call to Gemini with conversation history and enhanced system prompt
     let geminiResponse = await callGemini(message, conversationHistory, enhancedSystemPrompt);
+    conversationHistory.push({ role: "user", parts: [{ text: message }] });
 
     // Handle potential function calls
     let maxIterations = 5; // Prevent infinite loops
@@ -1331,10 +1321,11 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
           });
         }
 
-        // Add function call and response to conversation
+        // Send back the model's full turn: Gemini 3 rejects function calls
+        // replayed without their thoughtSignature parts.
         conversationHistory.push({
           role: "model",
-          parts: functionCalls
+          parts
         });
 
         conversationHistory.push({
@@ -1342,8 +1333,7 @@ ${contextInfo.monthNumber === 11 ? '- നവംബർ: "ഓണം കഴിഞ�
           parts: functionResponses
         });
 
-        // Call Gemini again with function results  
-        geminiResponse = await callGemini(message, conversationHistory, enhancedSystemPrompt);
+        geminiResponse = await callGemini(null, conversationHistory, enhancedSystemPrompt);
 
       } else {
         console.log('❌ No function calls found, extracting text response');

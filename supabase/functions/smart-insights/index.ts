@@ -16,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, period = 'week' } = await req.json();
+    const { period = 'week' } = await req.json();
 
     // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -27,6 +27,21 @@ serve(async (req) => {
         persistSession: false
       }
     });
+
+    // The client-sent userId is ignored: the service role bypasses RLS,
+    // so the user must come from a verified session token only.
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+    const { data: authData, error: authError } = token
+      ? await supabase.auth.getUser(token)
+      : { data: { user: null }, error: null };
+    const userId = authError ? null : authData.user?.id;
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized: please log in again' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('📊 Generating smart insights for period:', period);
 
@@ -236,21 +251,22 @@ EXAMPLE:
       throw new Error('GEMINI_API_KEY not configured');
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // Set GEMINI_INSIGHTS_MODEL as a function secret to switch models without a code change.
+    const model = Deno.env.get('GEMINI_INSIGHTS_MODEL') || 'gemini-3.8-flash';
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
       body: JSON.stringify({
         contents: [{
           role: "user",
           parts: [{ text: prompt }]
         }],
+        // Thinking tokens count toward maxOutputTokens, so leave headroom for the JSON.
         generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048
+          maxOutputTokens: 8192,
+          responseMimeType: 'application/json'
         }
       })
     });
@@ -261,7 +277,10 @@ EXAMPLE:
     }
 
     const geminiData = await geminiResponse.json();
-    const aiResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const aiResponse = (geminiData.candidates?.[0]?.content?.parts || [])
+      .filter((p: any) => p.text && !p.thought)
+      .map((p: any) => p.text)
+      .join('');
 
     console.log('🤖 AI Response:', aiResponse);
 

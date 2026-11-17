@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 class SmartInsight {
   final String type; // profit, expense, income, trend, warning, suggestion
@@ -21,6 +23,15 @@ class SmartInsight {
       message: json['message'] ?? '',
       icon: json['icon'] ?? '📊',
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'type': type,
+      'title': title,
+      'message': message,
+      'icon': icon,
+    };
   }
 }
 
@@ -51,6 +62,17 @@ class InsightsSummary {
       totalDays: json['totalDays'] ?? 0,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'totalIncome': totalIncome,
+      'totalExpense': totalExpense,
+      'profit': profit,
+      'profitMargin': profitMargin,
+      'profitableDays': profitableDays,
+      'totalDays': totalDays,
+    };
+  }
 }
 
 class SmartInsightsResponse {
@@ -73,11 +95,11 @@ class SmartInsightsResponse {
   factory SmartInsightsResponse.fromJson(Map<String, dynamic> json) {
     return SmartInsightsResponse(
       insights: (json['insights'] as List?)
-              ?.map((i) => SmartInsight.fromJson(i))
+              ?.map((i) => SmartInsight.fromJson(Map<String, dynamic>.from(i)))
               .toList() ??
           [],
       summary: json['summary'] != null
-          ? InsightsSummary.fromJson(json['summary'])
+          ? InsightsSummary.fromJson(Map<String, dynamic>.from(json['summary']))
           : null,
       period: json['period'] ?? 'week',
       startDate: json['startDate'],
@@ -85,10 +107,26 @@ class SmartInsightsResponse {
       error: json['error'],
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'insights': insights.map((i) => i.toMap()).toList(),
+      'summary': summary?.toMap(),
+      'period': period,
+      'startDate': startDate,
+      'endDate': endDate,
+      'error': error,
+    };
+  }
+
+  String toJson() => jsonEncode(toMap());
 }
 
 class SmartInsightsService {
   final _supabase = Supabase.instance.client;
+
+  static const String _cachePrefix = 'smart_insights_';
+  static const String _cacheDatePrefix = 'smart_insights_date_';
 
   /// Get smart AI-powered business insights for the dashboard
   ///
@@ -99,76 +137,67 @@ class SmartInsightsService {
     String period = 'week',
   }) async {
     try {
-      print('📊 Fetching smart insights for period: $period');
+      final effectiveUserId = userId ?? _supabase.auth.currentUser?.id;
+      if (effectiveUserId == null) throw Exception('User not identified');
+
+      final prefs = await SharedPreferences.getInstance();
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      
+      final cacheKey = '${_cachePrefix}${effectiveUserId}_$period';
+      final cacheDateKey = '${_cacheDatePrefix}${effectiveUserId}_$period';
+
+      // 1. Check Cache
+      final cachedDate = prefs.getString(cacheDateKey);
+      final cachedData = prefs.getString(cacheKey);
+
+      if (cachedDate == todayStr && cachedData != null) {
+        print('📊 Returning cached smart insights for $period ($todayStr)');
+        try {
+          final decoded = jsonDecode(cachedData);
+          return SmartInsightsResponse.fromJson(Map<String, dynamic>.from(decoded));
+        } catch (e) {
+          print('⚠️ Error decoding cached insights: $e');
+          // Proceed to fetch fresh data if cache is corrupt
+        }
+      }
+
+      // 2. Fetch Fresh Data (One time per day)
+      print('📊 Fetching fresh smart insights for period: $period');
 
       final response = await _supabase.functions.invoke(
         'smart-insights',
         body: {
-          'userId': userId,
+          'userId': effectiveUserId,
           'period': period,
         },
       );
-
-      print('📊 Smart insights response status: ${response.status}');
-      print('📊 Smart insights response data: ${response.data}');
-
-      // Check for error responses
-      if (response.status == 404) {
-        throw Exception(
-            'Edge function not deployed. Run: supabase functions deploy smart-insights');
-      }
 
       if (response.status != 200) {
         throw Exception('Failed to get insights: ${response.status}');
       }
 
       final data = response.data;
-
-      // Handle null or empty data
-      if (data == null) {
-        throw Exception('No data returned from edge function');
+      if (data == null || data is! Map<String, dynamic>) {
+        throw Exception('Invalid response format from edge function');
       }
 
-      // Check if data is a Map
-      if (data is! Map<String, dynamic>) {
-        print('⚠️ Unexpected data type: ${data.runtimeType}');
-        throw Exception('Invalid response format');
-      }
-
-      // Check if there's an error in the response
       if (data.containsKey('error') && data['error'] != null) {
-        final errorDetails = data['details'] ?? data['error'];
-        print('❌ Edge function returned error: $errorDetails');
-        throw Exception(errorDetails);
+        throw Exception(data['details'] ?? data['error']);
       }
 
-      return SmartInsightsResponse.fromJson(data);
-    } catch (e, stackTrace) {
+      final insightsResponse = SmartInsightsResponse.fromJson(data);
+
+      // 3. Update Cache
+      await prefs.setString(cacheKey, insightsResponse.toJson());
+      await prefs.setString(cacheDateKey, todayStr);
+
+      return insightsResponse;
+    } catch (e) {
       print('❌ Error fetching smart insights: $e');
-      print('Stack trace: $stackTrace');
+      
+      // Fallback logic remains the same...
+      String errorMessage = _getErrorMessage(e.toString());
 
-      // Determine error message
-      String errorMessage;
-      String errorDetails = e.toString();
-
-      if (errorDetails.contains('not deployed')) {
-        errorMessage =
-            'Smart insights feature അപ്‌ഡേറ്റ് ചെയ്യുന്നു. ദയവായി കുറച്ച് സമയം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.';
-      } else if (errorDetails.contains('Database functions not found')) {
-        errorMessage = 'Database അപ്‌ഡേറ്റ് ആവശ്യമാണ്. Admin നെ ബന്ധപ്പെടൂ.';
-      } else if (errorDetails.contains('GEMINI_API_KEY') ||
-          errorDetails.contains('Gemini API')) {
-        errorMessage =
-            'AI service temporarily unavailable. കുറച്ച് സമയം കഴിഞ്ഞ് ശ്രമിക്കൂ.';
-      } else if (errorDetails.contains('No data')) {
-        errorMessage =
-            'ഈ കാലയളവിൽ ഡാറ്റ ലഭ്യമല്ല. ചെലവുകളും വരുമാനവും ചേർക്കൂ.';
-      } else {
-        errorMessage =
-            'ഇപ്പോൾ insights ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. കുറച്ച് സമയം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.';
-      }
-
-      // Return fallback insights on error
       return SmartInsightsResponse(
         insights: [
           SmartInsight(
@@ -180,8 +209,23 @@ class SmartInsightsService {
         ],
         summary: null,
         period: period,
-        error: errorDetails,
+        error: e.toString(),
       );
+    }
+  }
+
+  String _getErrorMessage(String errorDetails) {
+    if (errorDetails.contains('not deployed')) {
+      return 'Smart insights feature അപ്‌ഡേറ്റ് ചെയ്യുന്നു. ദയവായി കുറച്ച് സമയം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.';
+    } else if (errorDetails.contains('Database functions not found')) {
+      return 'Database അപ്‌ഡേറ്റ് ആവശ്യമാണ്. Admin നെ ബന്ധപ്പെടൂ.';
+    } else if (errorDetails.contains('GEMINI_API_KEY') ||
+        errorDetails.contains('Gemini API')) {
+      return 'AI service temporarily unavailable. കുറച്ച് സമയം കഴിഞ്ഞ് ശ്രമിക്കൂ.';
+    } else if (errorDetails.contains('No data')) {
+      return 'ഈ കാലയളവിൽ ഡാറ്റ ലഭ്യമല്ല. ചെലവുകളും വരുമാനവും ചേർക്കൂ.';
+    } else {
+      return 'ഇപ്പോൾ insights ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. കുറച്ച് സമയം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.';
     }
   }
 

@@ -151,31 +151,9 @@ class _NotificationSettingsScreenState
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-          ),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.notifications, size: 20),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Notification Settings',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+        title: AppTheme.appBarTitle(
+          _lang == 'ml' ? 'അറിയിപ്പുകൾ' : 'Notifications',
+          icon: Icons.notifications,
         ),
       ),
       body: ListView(

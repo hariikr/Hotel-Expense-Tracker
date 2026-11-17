@@ -6,6 +6,7 @@ import '../../features/transactions/models/income_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/formatters.dart';
 import '../../services/export_service.dart';
+import '../../services/language_service.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -53,15 +54,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-          ),
-        ),
-        title: const Text(
-          'Analytics & Insights',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: AppTheme.appBarTitle(
+          LanguageService.getLanguageCode() == 'ml' ? 'വിശകലനം' : 'Analytics',
+          icon: Icons.insights,
         ),
         actions: [
           IconButton(

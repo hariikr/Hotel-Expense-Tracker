@@ -14,6 +14,9 @@ class SupabaseService {
       client.from('expense_categories');
   SupabaseQueryBuilder get incomeCategories => client.from('income_categories');
   SupabaseQueryBuilder get dailySummary => client.from('daily_summary');
+  SupabaseQueryBuilder get bills => client.from('bills');
+  SupabaseQueryBuilder get billItems => client.from('bill_items');
+  SupabaseQueryBuilder get savedDishes => client.from('saved_dishes');
 
   User? get currentUser => client.auth.currentUser;
   String? get currentUserId => client.auth.currentUser?.id;

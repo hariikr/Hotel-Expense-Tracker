@@ -80,7 +80,7 @@ class TransactionRepository {
       return (response as List).map((e) => IncomeModel.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Failed to fetch incomes: $e');
-    }
+    }  
   }
 
   Future<IncomeModel> addIncome(IncomeModel income) async {
@@ -99,6 +99,14 @@ class TransactionRepository {
   Future<void> deleteIncome(String id) async {
     final userId = _supabaseService.currentUserId;
     if (userId == null) throw Exception('User not logged in');
+
+    // Delete any linked bill first
+    await _supabaseService.bills
+        .delete()
+        .eq('income_id', id)
+        .eq('user_id', userId);
+
+    // Delete the income
     await _supabaseService.incomes.delete().eq('id', id).eq('user_id', userId);
   }
 

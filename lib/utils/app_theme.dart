@@ -42,22 +42,23 @@ class AppTheme {
       brightness: Brightness.light,
     ),
     scaffoldBackgroundColor: backgroundColor,
-    appBarTheme: AppBarTheme(
+    appBarTheme: const AppBarTheme(
       elevation: 0,
+      scrolledUnderElevation: 1,
       centerTitle: false,
-      backgroundColor: primaryColor,
-      foregroundColor: textOnPrimary,
-      systemOverlayStyle: SystemUiOverlayStyle.light,
-      titleTextStyle: const TextStyle(
-        color: textOnPrimary,
+      backgroundColor: backgroundColor,
+      foregroundColor: textPrimary,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: darkSurface,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+      titleTextStyle: TextStyle(
+        color: textPrimary,
         fontSize: 20,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.5,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.2,
       ),
-      iconTheme: const IconThemeData(
-        color: textOnPrimary,
-        size: 24,
-      ),
+      iconTheme: IconThemeData(color: textPrimary, size: 24),
+      actionsIconTheme: IconThemeData(color: textPrimary, size: 24),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
@@ -130,7 +131,95 @@ class AppTheme {
       thickness: 1,
       space: 1,
     ),
+    navigationBarTheme: NavigationBarThemeData(
+      height: 72,
+      elevation: 0,
+      backgroundColor: cardColor,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: primaryColor.withValues(alpha: 0.12),
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return TextStyle(
+          fontSize: 13,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected ? primaryColor : textSecondary,
+        );
+      }),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return IconThemeData(
+          size: 26,
+          color: selected ? primaryColor : textSecondary,
+        );
+      }),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    tabBarTheme: const TabBarThemeData(
+      labelColor: primaryColor,
+      unselectedLabelColor: textSecondary,
+      indicatorColor: primaryColor,
+      labelStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+      unselectedLabelStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(64, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      ),
+    ),
   );
+
+  static Widget appBarTitle(String title, {String? subtitle, IconData? icon}) {
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: textPrimary,
+            letterSpacing: -0.2,
+          ),
+        ),
+        if (subtitle != null)
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: textSecondary,
+            ),
+          ),
+      ],
+    );
+    if (icon == null) return text;
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: primaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: primaryColor, size: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: text),
+      ],
+    );
+  }
 
   // Text Styles - Professional Typography
   static const TextStyle headingLarge = TextStyle(

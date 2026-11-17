@@ -36,6 +36,16 @@ class _MainNavigationState extends State<MainNavigation> {
 
   String get _languageCode => LanguageService.getLanguageCode();
 
+  void _onDestinationSelected(int index) {
+    setState(() => _currentIndex = index);
+    // Always refresh data when switching tabs
+    if (index == 0) {
+      context.read<TransactionCubit>().loadTransactions(DateTime.now());
+    } else if (index == 1) {
+      _calendarKey.currentState?.refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,120 +53,35 @@ class _MainNavigationState extends State<MainNavigation> {
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppTheme.darkSurface)),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            // Always refresh data when switching tabs
-            if (index == 0) {
-              context.read<TransactionCubit>().loadTransactions(DateTime.now());
-            } else if (index == 1) {
-              _calendarKey.currentState?.refresh();
-            }
-          },
-          selectedItemColor: AppTheme.primaryColor,
-          unselectedItemColor: AppTheme.textSecondary,
-          selectedFontSize: 12,
-          unselectedFontSize: 11,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          items: [
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 0
-                      ? AppTheme.primaryColor.withOpacity(0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _currentIndex == 0
-                      ? Icons.dashboard
-                      : Icons.dashboard_outlined,
-                  size: 24,
-                ),
-              ),
-              label: AppTranslations.get(
-                AppTranslations.dashboard,
-                _languageCode,
-              ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: _onDestinationSelected,
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.today_outlined),
+              selectedIcon: const Icon(Icons.today),
+              label: AppTranslations.get(AppTranslations.today, _languageCode),
             ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 1
-                      ? AppTheme.primaryColor.withOpacity(0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _currentIndex == 1
-                      ? Icons.calendar_month
-                      : Icons.calendar_month_outlined,
-                  size: 24,
-                ),
-              ),
-              label: AppTranslations.get(
-                AppTranslations.calendar,
-                _languageCode,
-              ),
+            NavigationDestination(
+              icon: const Icon(Icons.calendar_month_outlined),
+              selectedIcon: const Icon(Icons.calendar_month),
+              label:
+                  AppTranslations.get(AppTranslations.calendar, _languageCode),
             ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 2
-                      ? AppTheme.primaryColor.withOpacity(0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _currentIndex == 2
-                      ? Icons.analytics
-                      : Icons.analytics_outlined,
-                  size: 24,
-                ),
-              ),
-              label: AppTranslations.get(
-                AppTranslations.analytics,
-                _languageCode,
-              ),
+            NavigationDestination(
+              icon: const Icon(Icons.insights_outlined),
+              selectedIcon: const Icon(Icons.insights),
+              label:
+                  AppTranslations.get(AppTranslations.analytics, _languageCode),
             ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 3
-                      ? AppTheme.primaryColor.withOpacity(0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _currentIndex == 3
-                      ? Icons.smart_toy
-                      : Icons.smart_toy_outlined,
-                  size: 24,
-                ),
-              ),
-              label: AppTranslations.get(
-                AppTranslations.ai,
-                _languageCode,
-              ),
+            NavigationDestination(
+              icon: const Icon(Icons.auto_awesome_outlined),
+              selectedIcon: const Icon(Icons.auto_awesome),
+              label: AppTranslations.get(AppTranslations.ai, _languageCode),
             ),
           ],
         ),

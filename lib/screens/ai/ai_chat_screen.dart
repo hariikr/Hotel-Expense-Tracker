@@ -453,62 +453,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA), // Soft blue-gray background
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: AppTheme.primaryColor,
-        title: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF667EEA).withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.auto_awesome,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'AI സഹായി',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    'നിങ്ങളുടെ സാമ്പത്തിക സഹായി',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        toolbarHeight: 68,
+        title: AppTheme.appBarTitle(
+          'AI സഹായി',
+          subtitle: 'നിങ്ങളുടെ സാമ്പത്തിക സഹായി',
+          icon: Icons.auto_awesome,
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.white),
+            icon: const Icon(Icons.delete_outline),
             onPressed: _messages.isEmpty ? null : _clearChat,
             tooltip: 'ചാറ്റ് മായ്ക്കുക',
           ),

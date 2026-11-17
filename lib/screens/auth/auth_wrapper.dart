@@ -53,9 +53,9 @@ class _SplashScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1B5E20),
-              Color(0xFF2E7D32),
-              Color(0xFF43A047),
+              Color(0xFF1E3A8A),
+              Color(0xFF1E40AF),
+              Color(0xFF3B82F6),
             ],
           ),
         ),

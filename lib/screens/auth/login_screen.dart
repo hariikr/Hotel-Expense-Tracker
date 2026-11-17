@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B5E20),
+              backgroundColor: const Color(0xFF1E3A8A),
               foregroundColor: Colors.white,
             ),
             child: const Text('വീണ്ടും അയക്കുക'),
@@ -134,9 +134,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF1B5E20), // Dark green
-                  Color(0xFF2E7D32), // Medium green
-                  Color(0xFF43A047), // Light green
+                  Color(0xFF1E3A8A),
+                  Color(0xFF1E40AF),
+                  Color(0xFF3B82F6),
                 ],
               ),
             ),
@@ -199,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1B5E20),
+                                    color: Color(0xFF1E3A8A),
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -273,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     child: const Text(
                                       'പാസ്‌വേഡ് മറന്നോ?',
                                       style: TextStyle(
-                                        color: Color(0xFF1B5E20),
+                                        color: Color(0xFF1E3A8A),
                                       ),
                                     ),
                                   ),
@@ -286,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: ElevatedButton(
                                     onPressed: _isLoading ? null : _handleLogin,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF1B5E20),
+                                      backgroundColor: const Color(0xFF1E3A8A),
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
